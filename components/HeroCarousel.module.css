@@ -2,24 +2,31 @@
   position: relative;
   width: 100%;
   overflow: hidden;
+  background: #700707;
+  color: #fff8ed;
 }
 
 .viewport {
   position: relative;
+  display: grid;
   width: 100%;
   overflow: hidden;
+  touch-action: pan-y pinch-zoom;
 }
 
 .slide {
-  position: absolute;
-  inset: 0;
+  position: relative;
+  grid-area: 1 / 1;
+  min-width: 0;
   visibility: hidden;
+  pointer-events: none;
 }
 
 .active {
   position: relative;
   z-index: 1;
   visibility: visible;
+  pointer-events: auto;
   animation: slideIn 600ms ease-in-out both;
 }
 
@@ -36,6 +43,10 @@
   display: block;
   width: 100%;
   height: auto;
+}
+
+.mobileContent {
+  display: none;
 }
 
 .bannerLink {
@@ -103,7 +114,7 @@
 }
 
 .dotButton {
-  width: 30px;
+  width: 32px;
 }
 
 .dot {
@@ -140,9 +151,112 @@
   }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 1023px) {
   .controls {
-    bottom: 4px;
+    position: relative;
+    bottom: auto;
+    left: auto;
+    width: max-content;
+    max-width: calc(100% - 24px);
+    margin: 8px auto 12px;
+    transform: none;
+    background: transparent;
+  }
+
+  .dotButton {
+    width: 36px;
+  }
+}
+
+@media (max-width: 767px) {
+  .image,
+  .placeholder,
+  .bannerLink {
+    display: none;
+  }
+
+  .mobileContent {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+    padding: 24px 20px 8px;
+    text-align: center;
+  }
+
+  .mobileTitle {
+    max-width: 100%;
+    margin: 0;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(30px, 8vw, 42px);
+    font-weight: 400;
+    line-height: 1.15;
+    letter-spacing: -0.025em;
+    text-wrap: balance;
+  }
+
+  .mobileDescription {
+    min-height: 3em;
+    max-width: 32ch;
+    margin: 8px 0 0;
+    color: #f0d9d0;
+    font-size: 15px;
+    line-height: 1.5;
+    text-wrap: balance;
+  }
+
+  .mobileArtworkRow {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    width: 100%;
+    max-width: 360px;
+    margin: 16px 0;
+  }
+
+  .mobileArtwork {
+    position: relative;
+    justify-self: center;
+    width: 100%;
+    max-width: 160px;
+    aspect-ratio: 22 / 25;
+    overflow: hidden;
+    border-radius: 12px;
+  }
+
+  /* Reuse the product artwork at each edge, excluding the baked-in text. */
+  .artworkImage {
+    object-fit: cover;
+  }
+
+  .artworkLeft {
+    object-position: left center;
+  }
+
+  .artworkRight {
+    object-position: right center;
+  }
+
+  .mobileCta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 44px;
+    min-width: 168px;
+    margin-top: auto;
+    padding: 10px 24px;
+    border: 1px solid #fff8ed;
+    border-radius: 999px;
+    color: #fff8ed;
+    font-size: 15px;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .mobileCta:focus-visible {
+    outline: 2px solid #fff8ed;
+    outline-offset: 4px;
   }
 }
 
