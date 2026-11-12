@@ -43,10 +43,11 @@ import {
 } from "@/lib/wedding-cards";
 
 const WEDDING_COLLECTION_SUBJECTS = {
-  hindu: "hindu wedding card",
-  muslim: "muslim wedding card",
-  christian: "christian wedding card",
-} as const;
+  hindu: ["hindu wedding card", "common"],
+  muslim: ["muslim wedding card", "common"],
+  christian: ["christian wedding card", "common"],
+  bengali: ["bengali"],
+};
 
 function validateOffset(offset: number) {
   // The PostgreSQL page function uses an integer offset.
@@ -248,7 +249,7 @@ const readWeddingBrowsePage = unstable_cache(
   ) => {
     const subjects =
       collectionType && collectionType !== "boxes"
-        ? [WEDDING_COLLECTION_SUBJECTS[collectionType], "common"]
+        ? WEDDING_COLLECTION_SUBJECTS[collectionType]
         : undefined;
     const itemCategory = collectionType === "boxes" ? "Wedding Box" : undefined;
     const filterCategory = !collectionType

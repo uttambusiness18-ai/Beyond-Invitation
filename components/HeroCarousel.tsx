@@ -1,79 +1,140 @@
-﻿import { Cormorant_Garamond } from "next/font/google";
+﻿"use client";
+
+import { useEffect, useState, type CSSProperties } from "react";
 import Image from "next/image";
-import Link from "next/link";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import Link from "@/components/NavigationLink";
 import styles from "./HeroCarousel.module.css";
 
-const cormorant = Cormorant_Garamond({
-  subsets: ["latin"],
-  weight: ["300", "400"],
-  style: ["normal", "italic"],
-  variable: "--font-potli-serif",
-  display: "swap",
-});
+// Paste your four banner image links into src, in display order.
+// Update each alt with a description of that banner. Empty links show placeholders.
+const HERO_BANNERS = [
+  { src: "https://res.cloudinary.com/dxzuvk7np/image/upload/v1794484672/WhatsApp_Image_2026-11-12_at_4.44.38_PM_zr4fz7.jpg", alt: "Hero banner 1" },
+  { src: "https://res.cloudinary.com/dxzuvk7np/image/upload/v1794484672/WhatsApp_Image_2026-11-12_at_5.03.39_PM_qnl9vb.jpg", alt: "Bengali Wedding Cards", href: "/collections/wedding-card-bengali" },
+  { src: "https://res.cloudinary.com/dxzuvk7np/image/upload/v1794484672/WhatsApp_Image_2026-11-12_at_5.11.30_PM_cnbajp.jpg", alt: "Wedding Boxes", href: "/wedding-boxes" },
+  { src: "https://res.cloudinary.com/dxzuvk7np/image/upload/v1794484672/WhatsApp_Image_2026-11-12_at_5.22.16_PM_czgi3p.jpg", alt: "All Wedding Cards", href: "/wedding-cards" },
+];
 
-// Add the supplied image URL here when it is ready.
-const HERO_IMAGE_URL = "https://res.cloudinary.com/dxzuvk7np/image/upload/v1794386620/Arched_potli_portrait_ohzliq.png";
+const SLIDE_INTERVAL_MS = 5000;
 
 export default function HeroCarousel() {
+  const [slide, setSlide] = useState({
+    activeIndex: 0,
+    previousIndex: -1,
+    direction: 1,
+  });
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setSlide((previousSlide) => ({
+        activeIndex: (previousSlide.activeIndex + 1) % HERO_BANNERS.length,
+        previousIndex: previousSlide.activeIndex,
+        direction: 1,
+      }));
+    }, SLIDE_INTERVAL_MS);
+
+    return () => window.clearTimeout(timeout);
+  }, [slide.activeIndex]);
+
+  function showSlide(index: number, direction: number) {
+    const nextIndex = (index + HERO_BANNERS.length) % HERO_BANNERS.length;
+    if (nextIndex === slide.activeIndex) return;
+
+    setSlide({
+      activeIndex: nextIndex,
+      previousIndex: slide.activeIndex,
+      direction,
+    });
+  }
+
   return (
     <section
-      aria-labelledby="homepage-hero-title"
+      aria-label="Featured collections"
+      aria-roledescription="carousel"
       data-no-text-motion
-      className={`${styles.hero} ${cormorant.variable}`}
+      className={styles.hero}
     >
-      <div className={styles.canvas}>
-        <h1 id="homepage-hero-title" className={styles.title}>
-          Potli Bags
-        </h1>
-
-        <p className={styles.tagline}>
-          Small treasures.
-          <br />
-          Grand gestures.
-        </p>
-
-        <div className={styles.imageFrame} aria-hidden={!HERO_IMAGE_URL}>
-          {HERO_IMAGE_URL && (
-            <Image
-              src={HERO_IMAGE_URL}
-              alt="Embroidered potli bags"
-              fill
-              priority
-              unoptimized
-              sizes="(max-width: 899px) 76vw, (min-width: 1920px) 652px, 34vw"
-              className={styles.image}
-            />
-          )}
-        </div>
-
-        <div className={styles.intro}>
-          <h2 className={styles.introTitle}>Meet our Potli Bags</h2>
-          <p className={styles.description}>
-            A beautiful home for your thoughtful little gifts. Discover potli bags
-            that bring a touch of tradition and a little more joy to every
-            celebration.
-          </p>
-        </div>
-
-        <Link href="/search?q=potli" className={styles.cta}>
-          <span aria-hidden="true" className={styles.pin} />
-          <span className={styles.ctaEyebrow}>
-            Your next celebration, sorted.
-          </span>
-          <span className={styles.ctaLabel}>Explore Potli Bags</span>
-          <svg
-            aria-hidden="true"
-            className={styles.arrow}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+      <h1 className="sr-only">Beyond Invitation wedding cards and gifting</h1>
+      <div
+        className={styles.viewport}
+        aria-live="off"
+        style={{ "--slide-direction": slide.direction } as CSSProperties}
+      >
+        {HERO_BANNERS.map((banner, index) => (
+          <div
+            key={index}
+            role="group"
+            aria-roledescription="slide"
+            aria-label={`${index + 1} of ${HERO_BANNERS.length}`}
+            aria-hidden={index !== slide.activeIndex}
+            className={`${styles.slide} ${
+              index === slide.activeIndex
+                ? styles.active
+                : index === slide.previousIndex
+                  ? styles.outgoing
+                  : ""
+            } ${slide.previousIndex === -1 ? styles.initial : ""}`}
           >
-            <path d="M6 18 18 6M6 6h12v12" />
-          </svg>
-        </Link>
+            {banner.src ? (
+              <Image
+                src={banner.src}
+                alt={banner.alt}
+                width={1600}
+                height={500}
+                sizes="100vw"
+                priority={index === 0}
+                loading={index === 0 ? undefined : "eager"}
+                unoptimized
+                className={styles.image}
+              />
+            ) : (
+              <div className={styles.placeholder}>{banner.alt}</div>
+            )}
+            {banner.href && index === slide.activeIndex && (
+              <Link
+                href={banner.href}
+                aria-label={`Shop ${banner.alt}`}
+                className={styles.bannerLink}
+              />
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className={styles.controls}>
+        <button
+          type="button"
+          className={styles.controlButton}
+          aria-label="Previous banner"
+          onClick={() => showSlide(slide.activeIndex - 1, -1)}
+        >
+          <ChevronLeft size={20} aria-hidden="true" />
+        </button>
+
+        <div className={styles.dots} role="group" aria-label="Choose a banner">
+          {HERO_BANNERS.map((banner, index) => (
+            <button
+              key={index}
+              type="button"
+              className={styles.dotButton}
+              aria-label={`Show ${banner.alt.toLowerCase()}`}
+              aria-current={index === slide.activeIndex ? "true" : undefined}
+              onClick={() =>
+                showSlide(index, index > slide.activeIndex ? 1 : -1)
+              }
+            >
+              <span className={styles.dot} />
+            </button>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          className={styles.controlButton}
+          aria-label="Next banner"
+          onClick={() => showSlide(slide.activeIndex + 1, 1)}
+        >
+          <ChevronRight size={20} aria-hidden="true" />
+        </button>
       </div>
     </section>
   );

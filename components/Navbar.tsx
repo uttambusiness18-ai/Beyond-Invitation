@@ -35,6 +35,10 @@ const navMenu: NavItem[] = [
         href: "/collections/wedding-card-hindu",
       },
       {
+        label: "Bengali Wedding Cards",
+        href: "/collections/wedding-card-bengali",
+      },
+      {
         label: "Muslim Wedding Cards",
         href: "/collections/wedding-card-muslim",
       },

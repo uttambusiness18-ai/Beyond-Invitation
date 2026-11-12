@@ -47,7 +47,7 @@ export const CARD_TYPES = [
   { value: "christian", label: "Christian Wedding Card", itemCategory: "Wedding Card", href: "/collections/wedding-card-christian" },
 ] as const;
 export type WeddingCardType = (typeof CARD_TYPES)[number]["value"];
-export type WeddingCollectionType = WeddingCardType | "boxes";
+export type WeddingCollectionType = WeddingCardType | "bengali" | "boxes";
 export type WeddingProductPage = {
   products: BrowserProduct[];
   nextOffset: number | null;

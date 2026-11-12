@@ -1,219 +1,158 @@
-﻿.hero {
-  width: 100%;
-  overflow: hidden;
-  background: #4b2131;
-  color: #f4ecd9;
-}
-
-.canvas {
+.hero {
   position: relative;
-  container-type: inline-size;
   width: 100%;
-  max-width: 1920px;
-  aspect-ratio: 1233 / 619;
-  margin-inline: auto;
-}
-
-.title,
-.tagline,
-.introTitle {
-  font-family: var(--font-potli-serif), Georgia, serif;
-}
-
-.title {
-  position: absolute;
-  top: 1.2924%;
-  inset-inline: 0;
-  margin: 0;
-  font-size: 12.9765cqw;
-  font-weight: 300;
-  line-height: 1.08;
-  letter-spacing: -0.045em;
-  text-align: center;
-}
-
-.tagline {
-  position: absolute;
-  top: 54.2811%;
-  left: 3.3252%;
-  margin: 0;
-  font-size: 3.2441cqw;
-  font-weight: 300;
-  line-height: 1.1;
-}
-
-.imageFrame {
-  position: absolute;
-  top: 29.0792%;
-  left: 33.09%;
-  width: 33.9822%;
-  height: 67.3667%;
   overflow: hidden;
-  border-radius: 50% 50% 0 0;
+}
+
+.viewport {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+.slide {
+  position: absolute;
+  inset: 0;
+  visibility: hidden;
+}
+
+.active {
+  position: relative;
+  z-index: 1;
+  visibility: visible;
+  animation: slideIn 600ms ease-in-out both;
+}
+
+.outgoing {
+  visibility: visible;
+  animation: slideOut 600ms ease-in-out both;
+}
+
+.initial {
+  animation: none;
 }
 
 .image {
-  object-fit: cover;
+  display: block;
+  width: 100%;
+  height: auto;
 }
 
-.intro {
+.bannerLink {
   position: absolute;
-  top: 49.7577%;
-  left: 73.3982%;
-  width: 20.2758%;
+  inset: 0;
 }
 
-.introTitle {
-  margin: 0;
-  font-size: 1.7843cqw;
-  font-style: italic;
-  font-weight: 400;
-  line-height: 1.2;
+.bannerLink:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: -4px;
 }
 
-.description {
-  margin: 1.4599cqw 0 0;
-  color: #c9b5bc;
-  font-size: max(12px, 1.0543cqw);
-  font-weight: 400;
-  line-height: 1.6;
-}
-
-.cta {
-  position: absolute;
-  z-index: 1;
-  top: 81.9063%;
-  left: 60.1784%;
+.placeholder {
   display: grid;
-  grid-template-columns: 1fr auto;
-  row-gap: 0.9732cqw;
-  align-content: center;
-  align-items: center;
-  width: 18.9781%;
-  height: 14.8627%;
-  padding: 1.2165cqw 2.0276cqw 1.2165cqw 2.8386cqw;
-  transform: rotate(5deg);
-  background: #d7dda4;
-  color: #4b2131;
-  text-decoration: none;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 16 / 5;
+  font-size: clamp(24px, 4vw, 64px);
+  font-weight: 400;
 }
 
-.cta:focus-visible {
-  outline: 2px solid #f4ecd9;
-  outline-offset: 5px;
-}
-
-.pin {
+.controls {
   position: absolute;
-  top: 1.2976cqw;
-  left: 1.2976cqw;
-  width: 0.6488cqw;
-  height: 0.6488cqw;
+  z-index: 2;
+  bottom: 20px;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  padding: 2px 6px;
+  border: 1px solid rgb(255 255 255 / 25%);
+  border-radius: 999px;
+  background: rgb(28 16 18 / 75%);
+  color: #fff;
+  transform: translateX(-50%);
+}
+
+.controlButton,
+.dotButton {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
   border-radius: 50%;
-  background: currentColor;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
 }
 
-.ctaEyebrow {
-  grid-column: 1 / -1;
-  font-size: 0.5677cqw;
-  font-weight: 600;
-  line-height: 1.2;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  white-space: nowrap;
+.controlButton:hover,
+.dotButton:hover {
+  background: rgb(255 255 255 / 12%);
 }
 
-.ctaLabel {
-  font-size: 1.2165cqw;
-  font-weight: 600;
-  line-height: 1.2;
-  white-space: nowrap;
+.controlButton:focus-visible,
+.dotButton:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -3px;
 }
 
-.arrow {
-  width: 1.6221cqw;
-  height: 1.6221cqw;
+.dots {
+  display: flex;
 }
 
-@media (max-width: 899px) {
-  .canvas {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    aspect-ratio: auto;
-    padding: 20px 24px 42px;
+.dotButton {
+  width: 30px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 45%);
+}
+
+.dotButton[aria-current="true"] .dot {
+  width: 20px;
+  border-radius: 999px;
+  background: #fff;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(calc(var(--slide-direction) * 100%));
   }
 
-  .title {
-    position: static;
-    font-size: clamp(72px, 16cqw, 140px);
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideOut {
+  from {
+    transform: translateX(0);
   }
 
-  .tagline {
-    position: static;
-    align-self: flex-start;
-    margin-top: 26px;
-    font-size: clamp(30px, 5.5cqw, 40px);
+  to {
+    transform: translateX(calc(var(--slide-direction) * -100%));
+    visibility: hidden;
+  }
+}
+
+@media (max-width: 600px) {
+  .controls {
+    bottom: 4px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .active,
+  .outgoing {
+    animation: none;
   }
 
-  .imageFrame {
-    position: relative;
-    top: auto;
-    left: auto;
-    flex: none;
-    width: 84%;
-    max-width: 418px;
-    height: auto;
-    aspect-ratio: 418 / 417;
-    margin-top: 28px;
-  }
-
-  .intro {
-    position: static;
-    align-self: flex-end;
-    width: min(100%, 280px);
-    margin-top: 28px;
-  }
-
-  .introTitle {
-    font-size: 24px;
-  }
-
-  .description {
-    margin-top: 16px;
-    font-size: 14px;
-  }
-
-  .cta {
-    position: relative;
-    top: auto;
-    left: auto;
-    align-self: flex-end;
-    flex: none;
-    row-gap: 12px;
-    width: 234px;
-    height: 92px;
-    margin: 32px 4px 0 0;
-    padding: 15px 25px 15px 35px;
-  }
-
-  .pin {
-    top: 16px;
-    left: 16px;
-    width: 8px;
-    height: 8px;
-  }
-
-  .ctaEyebrow {
-    font-size: 7px;
-  }
-
-  .ctaLabel {
-    font-size: 15px;
-  }
-
-  .arrow {
-    width: 20px;
-    height: 20px;
+  .outgoing {
+    visibility: hidden;
   }
 }
