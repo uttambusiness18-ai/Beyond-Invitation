@@ -1,0 +1,26 @@
+.status { white-space: nowrap; }
+.status[data-status="open"] { color: #79521a; background: #f4e7cf; }
+.status[data-status="in_progress"] { color: #315074; background: #e7eef7; }
+.status[data-status="resolved"] { color: #38522b; background: #e8eee2; }
+.cardTop { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.cardTop strong { font-weight: 600; overflow-wrap: anywhere; }
+.cardTop .status { flex-shrink: 0; }
+.cardTopic { margin-top: 9px; font-size: .9375rem; font-weight: 600; }
+.preview { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; color: var(--muted); font-size: .875rem; margin-top: 5px; line-height: 1.5; }
+.cardMeta { display: block; margin-top: 13px; font-size: .8125rem; color: var(--muted); line-height: 1.7; }
+.metadata dd { overflow-wrap: anywhere; }
+.metadata a { text-decoration: underline; text-underline-offset: 3px; color: var(--primary); }
+.messageSection { padding: 22px 0; }
+.message { white-space: pre-wrap; overflow-wrap: anywhere; padding: 17px 18px; margin-top: 12px; border: 1px solid var(--line-soft); border-radius: 12px; background: var(--paper); color: var(--ink); line-height: 1.7; }
+.statusForm { padding-top: 20px; border-top: 1px solid var(--line); }
+.statusForm > label { display: block; color: var(--muted); font-size: .875rem; font-weight: 600; margin-bottom: 8px; }
+.statusActions { display: flex; gap: 12px; align-items: center; }
+.statusActions select { flex: 1; min-width: 0; padding: 11px 13px; border: 1px solid var(--line); border-radius: 10px; color: var(--ink); background: white; }
+.hint, .filterHint { color: var(--muted); font-size: .8125rem; line-height: 1.6; }
+.hint { margin-top: 12px; }
+.filterHint { margin: -6px 0 22px; }
+.stale { display: block; margin-top: 4px; font-size: .8125rem; }
+@media (max-width: 600px) {
+  .statusActions { flex-direction: column; align-items: stretch; }
+  .cardTop { flex-wrap: wrap; }
+}

@@ -2,11 +2,12 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, Package, ArrowUpRight } from "lucide-react";
+import { ChevronDown, Package, ArrowUpRight, MessageSquare } from "lucide-react";
 import type { AccountOrder } from "@/lib/account";
 import { formatProductName } from "@/lib/product-name";
 import { useAccountMotion } from "./AccountMotion";
 import OrderTracking from "./OrderTracking";
+import OrderHelpModal from "./OrderHelpModal";
 import { cardClass, focusClass, linkClass, secondaryClass, SectionHeading } from "./AccountUI";
 
 function OrderRow({ order }: { order: AccountOrder }) {
@@ -57,6 +58,7 @@ function OrderRow({ order }: { order: AccountOrder }) {
 }
 
 export default function AccountOrders({ orders }: { orders: AccountOrder[] }) {
+  const [helpOpen, setHelpOpen] = useState(false);
   return (
     <section id="orders" aria-labelledby="orders-heading" data-motion="section" className={cardClass}>
       <SectionHeading id="orders-heading">Your recent orders</SectionHeading>
@@ -67,7 +69,8 @@ export default function AccountOrders({ orders }: { orders: AccountOrder[] }) {
           <Link href="/catalog" className={`mt-5 ${secondaryClass}`}>Browse the catalogue<ArrowUpRight aria-hidden="true" className="h-4 w-4" /></Link>
         </div>
       )}
-      <Link href="/contact" className={`mt-6 ${linkClass}`}>Need help with an order?<ArrowUpRight aria-hidden="true" className="h-3.5 w-3.5" /></Link>
+      <button type="button" onClick={() => setHelpOpen(true)} aria-haspopup="dialog" aria-expanded={helpOpen} className={`mt-6 ${linkClass}`}>Need help with an order?<MessageSquare aria-hidden="true" className="h-3.5 w-3.5" /></button>
+      {helpOpen && <OrderHelpModal orders={orders} onClose={() => setHelpOpen(false)} />}
     </section>
   );
 }

@@ -120,42 +120,42 @@ export function CelebrationGrid({
     {
       name: "Hindu Wedding Cards",
       slug: "wedding-card-hindu",
-      image: "/category/hindu-wedding-cards.png",
+      image: "https://res.cloudinary.com/dhbevwau9/image/upload/v1794915536/Hindu_Wedding_Cards_Arch_odb81j.png",
     },
     {
       name: "Muslim Wedding Cards",
       slug: "wedding-card-muslim",
-      image: "/category/muslim-wedding-cards.png",
+      image: "https://res.cloudinary.com/dhbevwau9/image/upload/v1794916227/ChatGPT_Image_Nov_17_2026_05_11_59_PM_gb4jqf.png",
     },
     {
       name: "Christian Wedding Cards",
       slug: "wedding-card-christian",
-      image: "/category/christian-wedding-cards.png",
+      image: "https://res.cloudinary.com/dhbevwau9/image/upload/v1794916360/Christian_Wedding_Cards_Arch_shus73.png",
     },
     {
       name: "Shagun Envelopes",
       slug: "shagun-envelopes",
-      image: "/category/shagun-envelopes.png",
+      image: "https://res.cloudinary.com/dhbevwau9/image/upload/v1794916467/Luxury_Shagun_Envelopes_Collection_uxraxx.png",
     },
     {
       name: "Shagun Boxes",
       slug: "shagun-boxes",
-      image: "/category/shagun-boxes.png",
+      image: "https://res.cloudinary.com/dhbevwau9/image/upload/v1794916551/Luxury_Shagun_Gift_Boxes_tv0s1h.png",
     },
     {
       name: "Rakhi Cards",
       slug: "rakhi-cards",
-      image: "/category/rakhi-cards.png",
+      image: "https://res.cloudinary.com/dhbevwau9/image/upload/v1794916551/Luxury_Shagun_Gift_Boxes_tv0s1h.png",
     },
     {
       name: "Rakhi Boxes",
       slug: "rakhi-boxes",
-      image: "/category/rakhi-boxes.png",
+      image: "https://res.cloudinary.com/dhbevwau9/image/upload/v1794916551/Luxury_Shagun_Gift_Boxes_tv0s1h.png",
     },
     {
-      name: "Rakhi Tags",
-      slug: "rakhi-tags",
-      image: "/category/rakhi-tags.png",
+      name: "Bengali Cards",
+      slug: "wedding-card-bengali",
+      image: "https://res.cloudinary.com/dhbevwau9/image/upload/v1794916798/Bengali_Wedding_Cards_Showcase_wm8wi7.png",
     },
   ];
 
@@ -172,9 +172,18 @@ export function CelebrationGrid({
           Browse By Event
         </h2>
 
-        <div aria-hidden="true" className="mx-auto mt-2.5 flex h-[30px] w-[220px] items-center gap-2 text-[#dfa566] sm:w-[300px]">
+        <div
+          aria-hidden="true"
+          className="mx-auto mt-2.5 flex h-[30px] w-[220px] items-center gap-2 text-[#dfa566] sm:w-[300px]"
+        >
           <span className="h-px flex-1 bg-current" />
-          <svg viewBox="0 0 48 32" className="h-[30px] w-[44px] shrink-0 fill-none stroke-current" strokeWidth="0.8" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            viewBox="0 0 48 32"
+            className="h-[30px] w-[44px] shrink-0 fill-none stroke-current"
+            strokeWidth="0.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <path d="M24 27C15 20 17 10 24 2c7 8 9 18 0 25Z" />
             <path d="M24 27C12 25 8 16 10 8c10 2 15 8 14 19Zm0 0c12-2 16-11 14-19-10 2-15 8-14 19Z" />
             <path d="M24 27C12 30 5 24 2 17c10-2 18 1 22 10Zm0 0c12 3 19-3 22-10-10-2-18 1-22 10Z" />
@@ -191,23 +200,19 @@ export function CelebrationGrid({
               aria-label={cat.name}
               className="group flex min-w-0 flex-col text-center outline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#70070b]"
             >
-              <div className="rounded-t-full border border-b-0 border-[#e9b17c] p-[3px] pb-0">
-                <div className="relative aspect-[183/269] overflow-hidden rounded-t-full">
-                  <Image
-                    src={cat.image}
-                    alt={cat.name}
-                    fill
-                    sizes="(min-width: 1800px) 195px, (min-width: 1280px) 12vw, (min-width: 640px) 25vw, 50vw"
-                    className="object-cover motion-safe:transition-transform motion-safe:duration-500 motion-safe:group-hover:scale-105"
-                  />
+              <div className="rounded-t-full rounded-b-[24px] border border-[#e9b17c] p-[3px]">
+                <div className="relative aspect-[183/269] overflow-hidden rounded-t-full rounded-b-[20px]">
+                  {cat.image && (
+                    <Image
+                      src={cat.image}
+                      alt={cat.name}
+                      fill
+                      sizes="(min-width: 1800px) 195px, (min-width: 1280px) 12vw, (min-width: 640px) 25vw, 50vw"
+                      className="object-cover motion-safe:transition-transform motion-safe:duration-500 motion-safe:group-hover:scale-105"
+                    />
+                  )}
                 </div>
               </div>
-
-              <h3 className="flex-1 break-words rounded-b-[24px] border border-t-0 border-[#e9b17c] px-2 pb-6 pt-[18px] [font-family:'Times_New_Roman',Times,serif] text-base font-normal uppercase leading-normal text-[#7b0d12] xl:min-h-[90px] xl:text-lg">
-                {cat.name.slice(0, cat.name.lastIndexOf(" "))}
-                <br />
-                {cat.name.slice(cat.name.lastIndexOf(" ") + 1)}
-              </h3>
             </Link>
           ))}
         </div>
@@ -269,7 +274,9 @@ export function FeatureStrip() {
                   {it.title}
                 </h3>
 
-                <p className="mt-2 text-base leading-6 text-white/85">{it.sub}</p>
+                <p className="mt-2 text-base leading-6 text-white/85">
+                  {it.sub}
+                </p>
               </div>
             </div>
           ))}

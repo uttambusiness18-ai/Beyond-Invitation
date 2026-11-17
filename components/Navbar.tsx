@@ -72,10 +72,6 @@ const navMenu: NavItem[] = [
         label: "Boxes",
         href: "/collections/rakhi-boxes",
       },
-      {
-        label: "Tag",
-        href: "/collections/rakhi-tag",
-      },
     ],
   },
   { label: "Blogs", href: "/blog" },
@@ -693,11 +689,11 @@ export default function Navbar() {
           })}
         </nav>
 
-        <div className="hidden shrink-0 items-center justify-end gap-2.5 2xl:flex min-[1680px]:gap-3">
-          <div className="w-52 min-[1680px]:w-60">
-            <SearchBar />
-          </div>
+        <div className="hidden w-64 shrink-0 lg:block xl:w-80 2xl:w-52 min-[1680px]:w-60">
+          <SearchBar onNavigate={() => closeMobile()} />
+        </div>
 
+        <div className="hidden shrink-0 items-center justify-end gap-2.5 2xl:flex min-[1680px]:gap-3">
           <WishlistNavLink />
           <CartButton />
           <AuthNavLink />
@@ -782,9 +778,10 @@ export default function Navbar() {
         >
           <div className="px-4 py-4 sm:p-5">
             <div data-mobile-menu-item className="flex items-center gap-2">
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1 lg:hidden">
                 <SearchBar onNavigate={() => closeMobile()} />
               </div>
+              <h2 className="hidden min-w-0 flex-1 text-lg font-semibold text-carbon lg:block">Menu</h2>
 
               <button
                 type="button"

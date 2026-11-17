@@ -19,7 +19,6 @@ import HeroVideo from "@/components/HeroVideo";
 import HomeProducts, { HomeProductsSkeleton } from "@/components/home/HomeProducts";
 import Catalogue from "@/components/home/Catalogue";
 import KindWords from "@/components/KindWords";
-import InstagramReels from "@/components/InstagramReels";
 import HomeTextAnimation from "@/components/HomeTextAnimation";
 import WeddingBoxesEditorial from "@/components/WeddingBoxesEditorial";
 import CustomerReviewVideo from "@/components/CustomerReviwVideo";
@@ -174,8 +173,6 @@ export default async function HomePage() {
         <KindWords />
 
         <CustomerReviewVideo />
-
-        <InstagramReels />
       </div>
     </>
   );
