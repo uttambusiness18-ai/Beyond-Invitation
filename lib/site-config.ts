@@ -29,7 +29,7 @@ export const CONTACT = {
 } as const;
 
 export const SITE_DESCRIPTION =
-  "Shop premium wedding cards, wedding invitation cards, shagun envelopes, shagun boxes, rakhi packaging, and invitation stationery from Beyond Invitation in Kolkata.";
+  "Shop premium wedding cards, wedding invitation cards, shagun envelopes, shagun boxes, and invitation stationery from Beyond Invitation in Kolkata.";
 
 export const PRIMARY_KEYWORDS = [
   "wedding cards",
@@ -46,7 +46,6 @@ export const PRIMARY_KEYWORDS = [
   "invitation printing Kolkata",
   "shagun envelopes",
   "shagun boxes",
-  "rakhi packaging",
   "Beyond Invitation",
 ];
 

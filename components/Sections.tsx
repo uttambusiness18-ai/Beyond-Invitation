@@ -143,16 +143,6 @@ export function CelebrationGrid({
       image: "https://res.cloudinary.com/dhbevwau9/image/upload/v1794916551/Luxury_Shagun_Gift_Boxes_tv0s1h.png",
     },
     {
-      name: "Rakhi Cards",
-      slug: "rakhi-cards",
-      image: "https://res.cloudinary.com/dhbevwau9/image/upload/v1794916551/Luxury_Shagun_Gift_Boxes_tv0s1h.png",
-    },
-    {
-      name: "Rakhi Boxes",
-      slug: "rakhi-boxes",
-      image: "https://res.cloudinary.com/dhbevwau9/image/upload/v1794916551/Luxury_Shagun_Gift_Boxes_tv0s1h.png",
-    },
-    {
       name: "Bengali Cards",
       slug: "wedding-card-bengali",
       image: "https://res.cloudinary.com/dhbevwau9/image/upload/v1794916798/Bengali_Wedding_Cards_Showcase_wm8wi7.png",
@@ -192,7 +182,7 @@ export function CelebrationGrid({
           <span className="h-px flex-1 bg-current" />
         </div>
 
-        <div className="mt-9 grid grid-cols-2 gap-x-3 gap-y-6 sm:mt-12 sm:grid-cols-4 sm:gap-x-4 xl:mt-[48px] xl:grid-cols-8 xl:gap-x-[0.84vw]">
+        <div className="mt-9 grid grid-cols-2 gap-x-3 gap-y-6 sm:mt-12 sm:grid-cols-3 sm:gap-x-4 xl:mt-[48px] xl:grid-cols-6 xl:gap-x-[0.84vw]">
           {categoryItems.map((cat) => (
             <Link
               key={cat.slug}

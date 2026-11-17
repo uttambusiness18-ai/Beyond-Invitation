@@ -57,7 +57,6 @@ export const metadata: Metadata = {
     "Christian wedding cards",
     "shagun envelopes",
     "shagun boxes",
-    "rakhi packaging",
     "Beyond Invitation",
   ],
   alternates: {

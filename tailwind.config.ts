@@ -1,10 +1,61 @@
 import type { Config } from "tailwindcss";
 
+// shadcn stores complete OKLCH colors; color-mix retains Tailwind 3 opacity modifiers.
+const shadcnColor = (token: string) =>
+  `color-mix(in oklch, var(--${token}) calc(<alpha-value> * 100%), transparent)`;
+
 const config: Config = {
   content: ["./app/**/*.{js,ts,jsx,tsx}", "./components/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
       colors: {
+        background: shadcnColor("background"),
+        foreground: shadcnColor("foreground"),
+        card: {
+          DEFAULT: shadcnColor("card"),
+          foreground: shadcnColor("card-foreground"),
+        },
+        popover: {
+          DEFAULT: shadcnColor("popover"),
+          foreground: shadcnColor("popover-foreground"),
+        },
+        primary: {
+          DEFAULT: shadcnColor("primary"),
+          foreground: shadcnColor("primary-foreground"),
+        },
+        secondary: {
+          DEFAULT: shadcnColor("secondary"),
+          foreground: shadcnColor("secondary-foreground"),
+        },
+        muted: {
+          DEFAULT: shadcnColor("muted"),
+          foreground: shadcnColor("muted-foreground"),
+        },
+        accent: {
+          DEFAULT: shadcnColor("accent"),
+          foreground: shadcnColor("accent-foreground"),
+        },
+        destructive: shadcnColor("destructive"),
+        border: shadcnColor("border"),
+        input: shadcnColor("input"),
+        ring: shadcnColor("ring"),
+        chart: {
+          1: shadcnColor("chart-1"),
+          2: shadcnColor("chart-2"),
+          3: shadcnColor("chart-3"),
+          4: shadcnColor("chart-4"),
+          5: shadcnColor("chart-5"),
+        },
+        sidebar: {
+          DEFAULT: shadcnColor("sidebar"),
+          foreground: shadcnColor("sidebar-foreground"),
+          primary: shadcnColor("sidebar-primary"),
+          "primary-foreground": shadcnColor("sidebar-primary-foreground"),
+          accent: shadcnColor("sidebar-accent"),
+          "accent-foreground": shadcnColor("sidebar-accent-foreground"),
+          border: shadcnColor("sidebar-border"),
+          ring: shadcnColor("sidebar-ring"),
+        },
         /* Legacy palette — kept so pages not yet redesigned still build. */
         maroon: { DEFAULT: "#7B1C2E", dark: "#5A1220", light: "#A83048" },
         gold: { DEFAULT: "#C9A84C", light: "#E6C97A", pale: "#F5EED5", ink: "#80601F" },

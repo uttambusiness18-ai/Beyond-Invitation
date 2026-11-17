@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { Assistant } from "next/font/google";
+import { Assistant, Inter } from "next/font/google";
 
 import "./globals.css";
 
@@ -8,6 +8,9 @@ import { SITE_NAME } from "@/components/siteConfig";
 import { getSiteUrl, DEFAULT_OG_IMAGE } from "@/lib/site-config";
 
 import StorefrontShell from "@/components/StorefrontShell";
+import { cn } from "@/lib/utils";
+
+const inter = Inter({subsets:['latin'],variable:'--font-sans'});
 
 const assistant = Assistant({
   subsets: ["latin"],
@@ -44,7 +47,6 @@ export const metadata: Metadata = {
     "wedding invitation cards",
     "wedding cards Kolkata",
     "shagun envelopes",
-    "rakhi packaging",
   ],
 
   openGraph: {
@@ -95,7 +97,7 @@ interface RootLayoutProps {
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <html lang="en" className={assistant.variable}>
+    <html lang="en" className={cn("font-sans", inter.variable)}>
       {/* Suppress body-only attribute warnings from extensions such as ColorZilla. */}
       <body
         suppressHydrationWarning

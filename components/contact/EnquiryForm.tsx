@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { ChevronDown } from "lucide-react";
+import { ArrowUpRight, Check, ChevronDown, Flower2, IndianRupee, LoaderCircle, Mail, MessageCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { CardContent, CardHeader } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Textarea } from "@/components/ui/textarea";
 import { useContactMotion } from "@/components/contact/ContactMotion";
 import ProductEnquiryBanner from "@/components/contact/ProductEnquiryBanner";
 import EnquirySuccess from "@/components/contact/EnquirySuccess";
@@ -11,9 +18,8 @@ import {
 } from "@/lib/contact";
 import { CONTACT } from "@/lib/site-config";
 
-const inputClass = "mt-2 w-full min-w-0 rounded-xl border border-carbon/15 bg-white px-4 py-3 text-base text-ink placeholder:text-ink-mid focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold/30";
-const labelClass = "text-base font-semibold text-ink";
-const hintClass = "mt-1.5 text-sm leading-relaxed text-ink-mid";
+const labelClass = "mb-2 text-sm font-semibold leading-5 text-ink";
+const hintClass = "mt-2 text-sm leading-relaxed text-ink-mid";
 type FieldName = "requirement" | "subRequirement" | "quantity" | "eventDate" | "name" | "mobile" | "email" | "budgetPerUnit" | "message";
 type Errors = Partial<Record<FieldName, string>>;
 
@@ -173,105 +179,156 @@ export default function EnquiryForm({ enquiryProduct }: { enquiryProduct: Enquir
   if (success) return <EnquirySuccess {...success} whatsappUrl={whatsappUrl} onReset={reset} />;
 
   return (
-    <form key={formVersion} ref={formRef} onSubmit={submit} noValidate aria-label="Send an enquiry" aria-busy={busy} className="relative space-y-6">
-      <header>
-        <h2 className="text-3xl font-normal tracking-tight text-maroon">Send an enquiry</h2>
-        <p className="mt-2 text-base text-ink-mid">Takes about a minute.</p>
-      </header>
-      {enquiryProduct ? <ProductEnquiryBanner product={enquiryProduct} /> : null}
+    <form key={formVersion} ref={formRef} onSubmit={submit} noValidate aria-label="Send an enquiry" aria-busy={busy} className="relative">
+      <CardHeader className="gap-0 border-b border-gold/20 bg-paper/70 p-6 sm:px-8 sm:py-7">
+        <h2 className="text-3xl font-normal leading-tight tracking-[-0.025em] text-carbon [font-family:Georgia,'Times_New_Roman',serif] sm:text-[2.125rem]">Let’s create something lovely.</h2>
+        <p className="mt-2 text-base leading-6 text-ink-mid">Share a few details. We’ll take it from here.</p>
+      </CardHeader>
 
-      <fieldset disabled={busy} className="min-w-0 space-y-4">
-        <legend className="mb-3 text-base font-semibold text-carbon">What do you need</legend>
-        <div>
-          <p id="enquiry-requirement-label" className={labelClass}>Requirement</p>
-          <div role="radiogroup" aria-labelledby="enquiry-requirement-label" aria-required="true" {...accessibility("requirement")} className="mt-3 flex flex-wrap gap-2">
-            {REQUIREMENTS.map(item => (
-              <label key={item.value} className="relative cursor-pointer">
-                <input type="radio" name="requirement" value={item.value} checked={requirement === item.value} required className="peer sr-only" {...accessibility("requirement")} onChange={() => {
-                  setRequirement(item.value); setSubRequirement("");
-                  if (item.value === "Wedding Cards") setCardTypeMounted(true);
-                }} />
-                <span className="block rounded-full border border-carbon/20 px-4 py-2 text-base font-semibold text-carbon transition hover:border-carbon/60 peer-checked:border-carbon peer-checked:bg-carbon peer-checked:text-white peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-gold">{item.label}</span>
-              </label>
-            ))}
+      <CardContent className="gap-6 p-6 sm:p-8">
+        {enquiryProduct ? <ProductEnquiryBanner product={enquiryProduct} /> : null}
+
+        <fieldset disabled={busy} aria-label="Your celebration" className="min-w-0 space-y-5">
+          <div className="flex items-center gap-3">
+            <span aria-hidden="true" className="flex size-6 shrink-0 items-center justify-center rounded-full bg-gold/15 text-xs font-semibold text-gold-ink">01</span>
+            <h3 className="text-xs font-semibold uppercase tracking-[0.15em] text-ink-mid">Your celebration</h3>
+            <span aria-hidden="true" className="h-px flex-1 bg-carbon/10" />
           </div>
-          <FieldError field="requirement" errors={errors} />
+          <div>
+            <p id="enquiry-requirement-label" className={labelClass}>What are you looking for? <span className="text-carbon" aria-hidden="true">*</span></p>
+            <RadioGroup
+              name="requirement"
+              value={requirement || null}
+              orientation="horizontal"
+              onChange={value => {
+                setRequirement(value); setSubRequirement("");
+                if (value === "Wedding Cards") setCardTypeMounted(true);
+              }}
+              aria-labelledby="enquiry-requirement-label"
+              isRequired
+              isDisabled={busy}
+              isInvalid={!!errors.requirement}
+              validationBehavior="aria"
+              {...accessibility("requirement")}
+              className="grid grid-cols-2 gap-3"
+            >
+              {REQUIREMENTS.map(item => {
+                const Icon = item.value === "Wedding Cards" ? Flower2 : Mail;
+                return (
+                  <RadioGroupItem
+                    key={item.value}
+                    value={item.value}
+                    className="group relative flex aspect-auto h-auto w-full min-w-0 cursor-pointer flex-col items-start gap-3 rounded-xl border border-carbon/15 bg-white p-3.5 text-ink transition-colors hover:border-carbon/40 hover:bg-paper/60 data-[selected]:border-carbon data-[selected]:bg-carbon/[0.04] data-[selected]:text-carbon data-[focus-visible]:ring-2 data-[focus-visible]:ring-gold/40 data-[focus-visible]:ring-offset-2 [&>[data-slot=radio-group-indicator]]:hidden sm:p-4"
+                  >
+                    {({ isSelected }) => (
+                      <>
+                        <Icon className="size-5 text-carbon" strokeWidth={1.5} aria-hidden="true" />
+                        <span aria-hidden="true" className={"absolute right-3.5 top-3.5 flex size-4 items-center justify-center rounded-full border " + (isSelected ? "border-carbon bg-carbon text-white" : "border-carbon/20 bg-white")}>
+                          {isSelected ? <Check className="size-2.5" strokeWidth={3} /> : null}
+                        </span>
+                        <span className="text-sm font-semibold leading-5 sm:text-base">{item.label}</span>
+                      </>
+                    )}
+                  </RadioGroupItem>
+                );
+              })}
+            </RadioGroup>
+            <FieldError field="requirement" errors={errors} />
+          </div>
+
+          <Reveal id="enquiry-card-type" open={isWedding}>
+            {cardTypeMounted ? <div>
+              <Label htmlFor="enquiry-subRequirement" className={labelClass}>Card type <span aria-hidden="true" className="text-carbon">*</span></Label>
+              <NativeSelect id="enquiry-subRequirement" name="subRequirement" required={isWedding} disabled={!isWedding || busy} value={subRequirement} onChange={event => setSubRequirement(event.target.value)} className="w-full" {...accessibility("subRequirement")}>
+                <NativeSelectOption value="">Choose your card style</NativeSelectOption>
+                {WEDDING_CARD_TYPES.map(item => <NativeSelectOption key={item.value} value={item.value}>{item.label}</NativeSelectOption>)}
+              </NativeSelect>
+              {isWedding ? <FieldError field="subRequirement" errors={errors} /> : null}
+            </div> : null}
+          </Reveal>
+
+          <div className="grid min-w-0 gap-4 sm:grid-cols-2">
+            <div className="min-w-0">
+              <Label htmlFor="enquiry-quantity" className={labelClass}>Quantity <span className="font-normal text-ink-mid">(optional)</span></Label>
+              <Input id="enquiry-quantity" name="quantity" type="number" inputMode="numeric" min={1} placeholder="e.g. 200" value={quantity} onChange={event => setQuantity(event.target.value)} {...accessibility("quantity", "enquiry-quantity-hint")} />
+              <p id="enquiry-quantity-hint" className={hintClass}>An estimate is perfectly fine.</p>
+              <FieldError field="quantity" errors={errors} />
+            </div>
+            <div className="min-w-0">
+              <Label htmlFor="enquiry-eventDate" className={labelClass}>Event date <span className="font-normal text-ink-mid">(optional)</span></Label>
+              <Input id="enquiry-eventDate" name="eventDate" type="date" min={today} className="block max-w-full appearance-none" {...accessibility("eventDate")} />
+              <FieldError field="eventDate" errors={errors} />
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset disabled={busy} aria-label="Your details" className="min-w-0 space-y-5">
+          <div className="flex items-center gap-3">
+            <span aria-hidden="true" className="flex size-6 shrink-0 items-center justify-center rounded-full bg-gold/15 text-xs font-semibold text-gold-ink">02</span>
+            <h3 className="text-xs font-semibold uppercase tracking-[0.15em] text-ink-mid">A little about you</h3>
+            <span aria-hidden="true" className="h-px flex-1 bg-carbon/10" />
+          </div>
+          <div>
+            <Label htmlFor="enquiry-name" className={labelClass}>Your name <span aria-hidden="true" className="text-carbon">*</span></Label>
+            <Input id="enquiry-name" name="name" required autoComplete="name" maxLength={100} placeholder="First and last name" {...accessibility("name")} />
+            <FieldError field="name" errors={errors} />
+          </div>
+          <div className="grid min-w-0 gap-4 sm:grid-cols-2">
+            <div className="min-w-0">
+              <Label htmlFor="enquiry-mobile" className={labelClass}>Mobile number <span aria-hidden="true" className="text-carbon">*</span></Label>
+              <div className="relative">
+                <span aria-hidden="true" className="pointer-events-none absolute inset-y-3 left-4 flex items-center border-r border-carbon/15 pr-3 text-sm font-medium text-ink-mid">+91</span>
+                <Input id="enquiry-mobile" name="mobile" aria-label="Mobile number, +91 India" type="tel" inputMode="numeric" required autoComplete="tel-national" maxLength={10} placeholder="10-digit number" value={mobile} onChange={event => setMobile(normaliseMobile(event.target.value))} onPaste={event => {
+                  const pasted = normaliseMobile(event.clipboardData.getData("text"));
+                  if (isValidIndianMobile(pasted)) { event.preventDefault(); setMobile(pasted); }
+                }} className="pl-[4.25rem]" {...accessibility("mobile")} />
+              </div>
+              <FieldError field="mobile" errors={errors} />
+            </div>
+            <div className="min-w-0">
+              <Label htmlFor="enquiry-email" className={labelClass}>Email <span className="font-normal text-ink-mid">(optional)</span></Label>
+              <Input id="enquiry-email" name="email" type="email" autoComplete="email" placeholder="you@example.com" {...accessibility("email")} />
+              <FieldError field="email" errors={errors} />
+            </div>
+          </div>
+        </fieldset>
+
+        <div className="rounded-xl border border-gold/25 bg-paper/60">
+          <Button type="button" variant="ghost" isDisabled={busy} aria-expanded={budgetOpen} aria-controls="enquiry-budget" onPress={() => setBudgetOpen(value => !value)} className="h-auto min-h-14 w-full justify-between gap-3 whitespace-normal rounded-xl px-4 py-3.5 text-left text-ink hover:bg-gold/10 focus-visible:ring-2 focus-visible:ring-gold/40">
+            <span className="flex items-center gap-3">
+              <IndianRupee className="size-4 text-gold-ink" aria-hidden="true" />
+              <span className="text-sm font-semibold">Have a budget in mind? <span className="font-normal text-ink-mid">(optional)</span></span>
+            </span>
+            <ChevronDown className={"size-4 text-ink-mid transition-transform motion-reduce:transition-none " + (budgetOpen ? "rotate-180" : "")} aria-hidden="true" />
+          </Button>
+          <Reveal id="enquiry-budget" open={budgetOpen}>
+            <div className="border-t border-gold/20 px-4 pb-4 pt-4">
+              <Label htmlFor="enquiry-budgetPerUnit" className={labelClass}>Budget per piece (₹)</Label>
+              <Input id="enquiry-budgetPerUnit" name="budgetPerUnit" type="number" inputMode="decimal" min={0} step="0.01" placeholder="e.g. 150" disabled={!budgetOpen || busy} value={budget} onChange={event => setBudget(event.target.value)} {...accessibility("budgetPerUnit")} />
+              <FieldError field="budgetPerUnit" errors={errors} />
+              {total != null ? <p className="mt-3 text-sm text-ink-mid"><span aria-hidden="true">Estimated total <span className="font-semibold text-carbon">₹<span ref={totalRef}>{formatInr(total)}</span></span></span><span className="sr-only" role="status">Estimated total ₹{formatInr(total)}</span></p> : <p className={hintClass}>Add a quantity and budget to see an estimated total.</p>}
+            </div>
+          </Reveal>
         </div>
-        <Reveal id="enquiry-card-type" open={isWedding}>
-          {cardTypeMounted ? <div className="pb-1">
-            <label htmlFor="enquiry-subRequirement" className={labelClass}>Card type</label>
-            <select id="enquiry-subRequirement" name="subRequirement" required={isWedding} disabled={!isWedding || busy} value={subRequirement} onChange={event => setSubRequirement(event.target.value)} className={inputClass} {...accessibility("subRequirement")}>
-              <option value="">Choose a card type</option>
-              {WEDDING_CARD_TYPES.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
-            </select>
-            {isWedding ? <FieldError field="subRequirement" errors={errors} /> : null}
+
+        <div>
+          <Label htmlFor="enquiry-message" className={labelClass}>Anything we should know? <span className="font-normal text-ink-mid">(optional)</span></Label>
+          <Textarea id="enquiry-message" name="message" rows={3} maxLength={2000} disabled={busy} placeholder="Your colours, ideas or special requests…" defaultValue={buildEnquiryMessage(enquiryProduct, "")} className="min-h-[104px] resize-y" {...accessibility("message")} />
+          <FieldError field="message" errors={errors} />
+        </div>
+
+        <input name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" className="absolute -left-[9999px]" />
+        <div className="space-y-3 border-t border-carbon/10 pt-5">
+          {submitError !== null ? <div role="alert" className="rounded-xl border border-maroon/20 bg-maroon/[0.04] px-4 py-3 text-sm leading-6 text-maroon">
+            {submitError || <>We could not send your enquiry. Please try again or <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="font-semibold underline underline-offset-4">message us on WhatsApp</a>.</>}
           </div> : null}
-        </Reveal>
-        <div className="grid min-w-0 gap-4 sm:grid-cols-2">
-          <div className="min-w-0">
-            <label htmlFor="enquiry-quantity" className={labelClass}>Quantity</label>
-            <input id="enquiry-quantity" name="quantity" type="number" inputMode="numeric" min={1} value={quantity} onChange={event => setQuantity(event.target.value)} className={inputClass} {...accessibility("quantity", "enquiry-quantity-hint")} />
-            <p id="enquiry-quantity-hint" className={hintClass}>Approximate is fine.</p><FieldError field="quantity" errors={errors} />
-          </div>
-          <div className="min-w-0">
-            <label htmlFor="enquiry-eventDate" className={labelClass}>Event date</label>
-            <input id="enquiry-eventDate" name="eventDate" type="date" min={today} className={inputClass} {...accessibility("eventDate")} />
-            <FieldError field="eventDate" errors={errors} />
-          </div>
+          <Button type="submit" isDisabled={busy} className="h-12 w-full gap-2 rounded-xl bg-carbon px-6 text-base font-semibold text-white shadow-[0_4px_12px_-4px_rgba(123,28,46,0.35)] transition-colors hover:bg-carbon-dark focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 disabled:cursor-wait">
+            {busy ? <><LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> Sending your enquiry…</> : <>Send enquiry <ArrowUpRight className="size-4" aria-hidden="true" /></>}
+          </Button>
+          <p className="flex items-center justify-center gap-2 text-center text-sm leading-5 text-ink-mid"><MessageCircle className="size-3.5 shrink-0" aria-hidden="true" /> Our team will call or message you back.</p>
+          <p className="text-center text-xs text-ink-mid">Fields marked * are required.</p>
         </div>
-      </fieldset>
-
-      <fieldset disabled={busy} className="min-w-0 space-y-4 border-t border-gold/20 pt-5">
-        <legend className="pr-3 text-base font-semibold text-carbon">Your details</legend>
-        <div>
-          <label htmlFor="enquiry-name" className={labelClass}>Name</label>
-          <input id="enquiry-name" name="name" required autoComplete="name" maxLength={100} className={inputClass} {...accessibility("name")} />
-          <FieldError field="name" errors={errors} />
-        </div>
-        <div className="grid min-w-0 gap-4 sm:grid-cols-2">
-          <div className="min-w-0">
-            <label htmlFor="enquiry-mobile" className={labelClass}>Mobile</label>
-            <div className="relative"><span aria-hidden="true" className="pointer-events-none absolute bottom-3 left-4 text-base text-ink-mid">+91</span>
-              <input id="enquiry-mobile" name="mobile" aria-label="Mobile, +91 India" type="tel" inputMode="numeric" required autoComplete="tel-national" maxLength={10} value={mobile} onChange={event => setMobile(normaliseMobile(event.target.value))} onPaste={event => {
-                const pasted = normaliseMobile(event.clipboardData.getData("text"));
-                if (isValidIndianMobile(pasted)) { event.preventDefault(); setMobile(pasted); }
-              }} className={`${inputClass} pl-14`} {...accessibility("mobile")} />
-            </div><FieldError field="mobile" errors={errors} />
-          </div>
-          <div className="min-w-0">
-            <label htmlFor="enquiry-email" className={labelClass}>Email</label>
-            <input id="enquiry-email" name="email" type="email" autoComplete="email" className={inputClass} {...accessibility("email", "enquiry-email-hint")} />
-            <p id="enquiry-email-hint" className={hintClass}>Optional</p><FieldError field="email" errors={errors} />
-          </div>
-        </div>
-      </fieldset>
-
-      <div className="border-y border-gold/20 py-4">
-        <button type="button" disabled={busy} aria-expanded={budgetOpen} aria-controls="enquiry-budget" onClick={() => setBudgetOpen(value => !value)} className="flex w-full items-center justify-between gap-3 text-left text-base font-semibold text-carbon">
-          Add a budget (optional)<ChevronDown size={16} aria-hidden="true" className={`shrink-0 transition-transform motion-reduce:transition-none ${budgetOpen ? "rotate-180" : ""}`} />
-        </button>
-        <Reveal id="enquiry-budget" open={budgetOpen}>
-          <div className="pt-4">
-            <label htmlFor="enquiry-budgetPerUnit" className={labelClass}>Budget per piece</label>
-            <input id="enquiry-budgetPerUnit" name="budgetPerUnit" type="number" inputMode="decimal" min={0} step="0.01" disabled={!budgetOpen || busy} value={budget} onChange={event => setBudget(event.target.value)} className={inputClass} {...accessibility("budgetPerUnit")} />
-            <FieldError field="budgetPerUnit" errors={errors} />
-            {total != null ? <p className="mt-3 text-base text-ink-mid"><span aria-hidden="true">Estimated total ₹<span ref={totalRef}>{formatInr(total)}</span></span><span className="sr-only" role="status">Estimated total ₹{formatInr(total)}</span></p> : <p className={hintClass}>Add a quantity and budget to see an estimated total.</p>}
-          </div>
-        </Reveal>
-      </div>
-      <div>
-        <label htmlFor="enquiry-message" className={labelClass}>Anything we should know?</label>
-        <textarea id="enquiry-message" name="message" rows={4} maxLength={2000} disabled={busy} defaultValue={buildEnquiryMessage(enquiryProduct, "")} className={`${inputClass} resize-y`} {...accessibility("message", "enquiry-message-hint")} />
-        <p id="enquiry-message-hint" className={hintClass}>Design numbers, finishes, delivery city.</p><FieldError field="message" errors={errors} />
-      </div>
-      <input name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" className="absolute -left-[9999px]" />
-      <div className="space-y-3">
-        {submitError !== null ? <div role="alert" className="rounded-xl border border-maroon/20 bg-white px-4 py-3 text-base text-maroon">
-          {submitError || <>We could not send your enquiry. Please try again or <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="font-semibold underline underline-offset-4">message us on WhatsApp</a>.</>}
-        </div> : null}
-        <button type="submit" disabled={busy} className="w-full rounded-full bg-carbon px-6 py-3 text-base font-semibold text-white transition hover:bg-carbon-dark disabled:cursor-wait disabled:opacity-60">{busy ? "Sending…" : "Send enquiry"}</button>
-        <p className="text-center text-sm text-ink-mid">Our team will call or message you back.</p>
-      </div>
+      </CardContent>
     </form>
   );
 }

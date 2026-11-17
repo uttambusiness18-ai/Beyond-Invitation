@@ -10,9 +10,7 @@ import { formatProductName } from "@/lib/product-name";
 import { useRazorpayCheckout } from "@/components/useRazorpayCheckout";
 import { useShippingQuote } from "@/components/useShippingQuote";
 import DeliveryServiceSelector from "@/components/DeliveryServiceSelector";
-import CheckoutDeliveryLocation from "@/components/CheckoutDeliveryLocation";
-import { deliveryAddressKey } from "@/lib/delivery-address";
-import { isValidIndianPincode, isValidDeliveryPlaceId, type DeliveryLocation, type ShippingSelection } from "@/lib/shipping";
+import { isValidIndianPincode } from "@/lib/shipping";
 
 type CheckoutForm = {
   name: string;
@@ -51,20 +49,14 @@ const initialForm: CheckoutForm = {
 };
 
 export default function CheckoutPage() {
-  const { items, totalItems, totalPrice, clearCart, deliveryPincode, setDeliveryPincode, shippingSelection, setShippingSelection } = useCart();
+  const { items, totalItems, totalPrice, clearCart, deliveryPincode, setDeliveryPincode } = useCart();
   const { user } = useAuth();
   const router = useRouter();
   const { startCheckout, loading } = useRazorpayCheckout();
 
   const [form, setForm] = useState<CheckoutForm>(() => ({ ...initialForm, pincode: deliveryPincode }));
   const pincodeEdited = useRef(false);
-  const [acceptedLocation, setAcceptedLocation] = useState<{ key: string; point: DeliveryLocation; placeId: string } | null>(null);
-  const addressKey = deliveryAddressKey(form);
-  // Never reuse a cart pin for an address the customer has not entered here.
-  const effectiveSelection: ShippingSelection = shippingSelection.service === "quick"
-    ? { service: "quick", ...(addressKey && acceptedLocation?.key === addressKey ? { deliveryLocation: acceptedLocation.point, deliveryPlaceId: acceptedLocation.placeId } : {}) }
-    : { service: "standard" };
-  const shipping = useShippingQuote(items, form.pincode, effectiveSelection);
+  const shipping = useShippingQuote(items, form.pincode);
   const [states, setStates] = useState<string[]>([]);
   const [cities, setCities] = useState<string[]>([]);
 
@@ -190,14 +182,8 @@ export default function CheckoutPage() {
       const pincode = value.replace(/\D/g, "").slice(0, 6);
       pincodeEdited.current = true;
       setDeliveryPincode(pincode);
-      if (deliveryAddressKey({ ...form, pincode }) !== addressKey) setAcceptedLocation(null);
       setForm((current) => ({ ...current, pincode }));
       return;
-    }
-    if (["addressLine1", "addressLine2", "city", "state", "country"].includes(key) &&
-        deliveryAddressKey({ ...form, [key]: value }) !== addressKey && shippingSelection.service === "quick") {
-      setAcceptedLocation(null);
-      setShippingSelection({ service: "quick" });
     }
     setForm((prev) => ({
       ...prev,
@@ -207,10 +193,6 @@ export default function CheckoutPage() {
 
   function handleStateChange(value: string) {
     if (loading || form.state === value) return;
-    if (form.state !== value && shippingSelection.service === "quick") {
-      setAcceptedLocation(null);
-      setShippingSelection({ service: "quick" });
-    }
     setForm((prev) => ({
       ...prev,
       state: value,
@@ -231,7 +213,6 @@ export default function CheckoutPage() {
     if (!form.city.trim()) return "Please select city.";
     if (!isValidIndianPincode(form.pincode)) return "Please enter a valid six-digit Indian PIN code.";
     if (form.country !== "India") return "Online delivery is currently available within India.";
-    if (shipping.locationRequired) return "Please wait for your delivery address to be located. If it cannot be found, correct the address or choose standard delivery.";
     return "";
   }
 
@@ -252,9 +233,7 @@ export default function CheckoutPage() {
     startCheckout({
       expectedAmountPaise: shipping.quote.totalPaise,
       expectedShippingAmountPaise: shipping.quote.amountPaise,
-      service: effectiveSelection.service,
-      deliveryLocation: effectiveSelection.deliveryLocation,
-      deliveryPlaceId: effectiveSelection.deliveryPlaceId,
+      service: "standard",
       items: items.map((item) => ({
         itemCode: item.itemCode,
         slug: item.slug,
@@ -282,10 +261,7 @@ export default function CheckoutPage() {
         router.push(`/checkout/success?${params}${privateLink}`);
       },
       onError: (message) => setError(message),
-      onQuoteChanged: () => {
-        if (effectiveSelection.service === "quick") setAcceptedLocation(null);
-        shipping.refresh();
-      },
+      onQuoteChanged: shipping.refresh,
     });
   }
 
@@ -511,28 +487,7 @@ export default function CheckoutPage() {
               />
             </label>
           </div>
-          <DeliveryServiceSelector
-            selection={effectiveSelection}
-            onChange={(selection) => {
-              if (loading) return;
-              setAcceptedLocation(null);
-              setShippingSelection({ service: selection.service });
-            }}
-            atCheckout
-            disabled={loading}
-          />
-          {shippingSelection.service === "quick" && <CheckoutDeliveryLocation
-            address={form} value={effectiveSelection.deliveryLocation} disabled={loading}
-            onChange={(point, key, placeId) => {
-              if (loading || key !== addressKey) return;
-              setAcceptedLocation(point && isValidDeliveryPlaceId(placeId) ? { key, point, placeId } : null);
-            }}
-            onSelectStandard={() => {
-              if (loading) return;
-              setAcceptedLocation(null);
-              setShippingSelection({ service: "standard" });
-            }}
-          />}
+          <DeliveryServiceSelector />
           </fieldset>
         </section>
 
@@ -583,9 +538,7 @@ export default function CheckoutPage() {
               </div>
 
               <div role="status" aria-live="polite" className={`mt-3 text-sm ${shipping.error ? "text-red-700" : "text-ink-mid"}`}>
-                {shipping.locationRequired && shipping.validPincode
-                  ? "Quick shipping will appear once your full delivery address has been located."
-                  : shipping.loading
+                {shipping.loading
                   ? "Updating shipping for your delivery pincode…"
                   : shipping.error
                     ? shipping.error

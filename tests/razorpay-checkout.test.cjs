@@ -126,6 +126,7 @@ const requestBody = {
 
 function routeHarness(options = {}) {
   const events = [];
+  const lookups = [];
   const logs = [];
   const env = options.env || {
     RAZORPAY_KEY_ID: "rzp_test_serverKey",
@@ -144,18 +145,30 @@ function routeHarness(options = {}) {
     "@/lib/razorpay": payment,
     "@/lib/checkout": {
       CheckoutValidationError: class extends Error {},
-      resolveCartProducts: async () => ({ lines: [{ itemCode: "offline-item", price: 1000, quantity: 1 }], amountPaise: 100000, currency: "INR", commission: 0 }),
+      resolveCartProducts: async () => {
+        lookups.push("products");
+        return { lines: [{ itemCode: "offline-item", price: 1000, quantity: 1 }], amountPaise: 100000, currency: "INR", commission: 0 };
+      },
     },
     "@/lib/cart-shipping": {
       ShippingQuoteError: class extends Error {},
-      quoteCartShipping: async () => ({ totalPaise: 119500, amountPaise: 19500 }),
+      quoteCartShipping: async () => {
+        lookups.push("shipping");
+        return { totalPaise: 119500, amountPaise: 19500 };
+      },
     },
     "@/lib/shipping": {
       isValidIndianPincode: value => /^[1-9]\d{5}$/.test(value),
       isValidDeliveryPlaceId: () => false,
     },
-    "@/lib/address-geocoding": { AddressGeocodingError: class extends Error {} },
-    "@/lib/address-geocoding-budget": { AddressGeocodingBudgetError: class extends Error {} },
+    "@/lib/address-geocoding": {
+      AddressGeocodingError: class extends Error {},
+      lookupDeliveryPlace: async () => { lookups.push("geocoding"); },
+    },
+    "@/lib/address-geocoding-budget": {
+      AddressGeocodingBudgetError: class extends Error {},
+      claimAddressGeocodingBudget: () => { lookups.push("geocoding-budget"); },
+    },
     "@/lib/website-orders": {
       createWebsiteOrder: async input => {
         events.push(["save", input]);
@@ -170,8 +183,52 @@ function routeHarness(options = {}) {
     "@/lib/supabase/auth-server": { getSupabaseAuthServerClient: async () => ({ auth: { getUser: async () => ({ data: { user: null } }) } }) },
     "@/lib/reseller": { getActiveResellerFromCookies: async () => null },
   }, { logs });
-  return { events, logs, configurations, run: () => route.POST({ json: async () => structuredClone(requestBody) }) };
+  return { events, lookups, logs, configurations, run: (body = requestBody) => route.POST({ json: async () => structuredClone(body) }) };
 }
+
+test("retired Quick checkout cannot resolve an address, create an order or start payment", async () => {
+  const harness = routeHarness();
+  const response = await harness.run({
+    ...requestBody,
+    service: "quick",
+    deliveryLocation: { latitude: 22.5, longitude: 88.3 },
+    deliveryPlaceId: "saved-place-reference",
+  });
+  const body = await response.json();
+  assert.equal(response.status, 400);
+  assert.equal(body.code, "DELIVERY_SERVICE_UNAVAILABLE");
+  assert.match(body.error, /refresh.*standard delivery/i);
+  assert.deepEqual(harness.lookups, []);
+  assert.deepEqual(harness.events, []);
+  assert.deepEqual(harness.configurations, []);
+});
+
+test("retired Quick quote requests never call the shipping provider", async () => {
+  const providerCalls = [];
+  const shipping = loadTs("lib/shipping.ts", {});
+  const { quoteCartShipping, ShippingQuoteError } = loadTs("lib/cart-shipping.ts", {
+    "server-only": {},
+    "@/lib/shipping": shipping,
+    "@/lib/shiprocket": {
+      ShiprocketError: class extends Error {},
+      getShiprocketRates: async () => { providerCalls.push("standard"); },
+      getShiprocketQuickRates: async () => { providerCalls.push("quick"); },
+    },
+  });
+  for (const selection of [
+    { service: "quick" },
+    { service: "quick", deliveryLocation: { latitude: 22.5, longitude: 88.3 } },
+  ]) {
+    await assert.rejects(quoteCartShipping({ lines: [] }, "700040", selection), error => {
+      assert.ok(error instanceof ShippingQuoteError);
+      assert.equal(error.code, "DELIVERY_SERVICE_UNAVAILABLE");
+      assert.equal(error.status, 400);
+      assert.match(error.message, /refresh.*standard delivery/i);
+      return true;
+    });
+  }
+  assert.deepEqual(providerCalls, []);
+});
 
 test("checkout saves and links the order before exposing the SDK's resolved key", async () => {
   const harness = routeHarness();

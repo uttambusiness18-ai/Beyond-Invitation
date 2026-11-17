@@ -60,20 +60,6 @@ const navMenu: NavItem[] = [
     label: "Shagun Boxes",
     href: "/collections/shagun-boxes",
   },
-  {
-    label: "Rakhi",
-    href: "/collections/rakhi",
-    dropdown: [
-      {
-        label: "Cards",
-        href: "/collections/rakhi-cards",
-      },
-      {
-        label: "Boxes",
-        href: "/collections/rakhi-boxes",
-      },
-    ],
-  },
   { label: "Blogs", href: "/blog" },
 ];
 

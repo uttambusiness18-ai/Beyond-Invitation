@@ -8,7 +8,7 @@ import { siteUrl } from "@/lib/site-config";
 export const metadata: Metadata = {
   title: `About Us | ${BRAND}`,
   description:
-    "Learn about Beyond Invitation, a brand of Bharat Agency Wedding Cards Pvt. Ltd., carrying a 65+ year legacy in wedding cards, shagun envelopes, Rakhi packaging and celebration stationery.",
+    "Learn about Beyond Invitation, a brand of Bharat Agency Wedding Cards Pvt. Ltd., carrying a 65+ year legacy in wedding cards, shagun envelopes and celebration stationery.",
   alternates: {
     canonical: "/about",
   },
@@ -38,7 +38,7 @@ const values = [
   {
     no: "03",
     title: "Tradition with new ideas",
-    text: "Today, the company offers wedding cards, shagun envelopes, Rakhi packaging and boxes, blending decades of experience with designs made for modern Indian celebrations.",
+    text: "Today, the company offers wedding cards, shagun envelopes and boxes, blending decades of experience with designs made for modern Indian celebrations.",
   },
 ];
 
@@ -46,8 +46,6 @@ const services = [
   "Wedding Cards",
   "Designer Wedding Cards",
   "Shagun / Money Envelopes",
-  "Rakhi Packaging",
-  "Rakhi Boxes",
   "Special Occasion Cards",
 ];
 
@@ -94,8 +92,8 @@ export default function AboutPage() {
               {BRAND} is the brand of Bharat Agency Wedding Cards Pvt. Ltd.,
               a company with a legacy of over 65 years. What started as a
               greeting card business gradually grew into a trusted wedding card
-              house, and today we create wedding cards, shagun envelopes, Rakhi
-              packaging and boxes for celebrations that deserve a beautiful
+              house, and today we create wedding cards, shagun envelopes
+              and boxes for celebrations that deserve a beautiful
               beginning.
             </p>
 
@@ -169,7 +167,7 @@ export default function AboutPage() {
             Wedding Cards Pvt. Ltd., a name that has been around for more than
             six decades. Over the years, the company expanded from greeting
             cards into wedding cards, and then into celebration essentials like
-            shagun envelopes, Rakhi packaging and boxes. Every product we make
+            shagun envelopes and boxes. Every product we make
             is rooted in experience, trust and the joy of helping families mark
             important moments.
           </p>
@@ -226,7 +224,7 @@ export default function AboutPage() {
 
             <p className="mt-5 leading-8 text-ink-mid">
               From wedding cards that announce a new beginning to shagun
-              envelopes and Rakhi packaging that complete festive gifting, our
+              envelopes that complete festive gifting, our
               collections are designed to bring elegance, tradition and
               presentation together.
             </p>
@@ -367,7 +365,7 @@ export default function AboutPage() {
 
                 <div className="mt-16">
                   <p className="font-serif text-3xl leading-tight text-carbon sm:text-4xl">
-                    Wedding cards, shagun envelopes and Rakhi packaging backed
+                    Wedding cards and shagun envelopes backed
                     by a 65+ year legacy.
                   </p>
 

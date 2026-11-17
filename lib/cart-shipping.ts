@@ -39,6 +39,13 @@ export async function quoteCartShipping(
   pincode: string,
   options: { refresh?: boolean; service?: unknown; deliveryLocation?: unknown; deliveryPlaceId?: unknown } = {},
 ): Promise<ShippingQuote> {
+  if (options.service === "quick") {
+    throw new ShippingQuoteError(
+      "DELIVERY_SERVICE_UNAVAILABLE",
+      "Shiprocket Quick is no longer available. Refresh the page to continue with standard delivery.",
+      400,
+    );
+  }
   let selection;
   try { selection = parseShippingSelection(options); }
   catch (error) {

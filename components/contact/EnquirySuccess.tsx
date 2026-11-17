@@ -2,6 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import { useContactMotion } from "@/components/contact/ContactMotion";
+import { Button, LinkButton } from "@/components/ui/button";
+import { ArrowUpRight } from "lucide-react";
 
 export default function EnquirySuccess({
   name,
@@ -29,7 +31,7 @@ export default function EnquirySuccess({
       role="status"
       tabIndex={-1}
       data-enquiry-success
-      className="py-10 text-center outline-none sm:py-16"
+      className="bg-paper/40 px-6 py-12 text-center outline-none sm:px-8 sm:py-16"
     >
       <svg
         ref={svgRef}
@@ -55,7 +57,7 @@ export default function EnquirySuccess({
       </svg>
       <div data-success-content>
       <h2
-        className="mt-6 text-3xl font-normal tracking-tight text-maroon outline-none"
+        className="mt-6 text-3xl font-normal tracking-tight text-maroon outline-none [font-family:Georgia,'Times_New_Roman',serif]"
       >
         Thank you, {name.trim().split(/\s+/)[0] || "there"}.
       </h2>
@@ -65,21 +67,22 @@ export default function EnquirySuccess({
           : "Our team will be in touch."}
       </p>
       <div className="mt-8 flex flex-col items-stretch gap-3">
-        <a
+        <LinkButton
           href={whatsappUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="rounded-full bg-carbon px-6 py-3 text-base font-semibold text-white transition hover:bg-carbon-dark"
+          className="h-12 gap-2 rounded-xl bg-carbon px-6 text-base font-semibold text-white hover:bg-carbon-dark focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2"
         >
-          Chat on WhatsApp
-        </a>
-        <button
+          Chat on WhatsApp <ArrowUpRight className="size-4" aria-hidden="true" />
+        </LinkButton>
+        <Button
           type="button"
-          onClick={onReset}
-          className="rounded-full border border-carbon/20 bg-white px-6 py-3 text-base font-semibold text-carbon transition hover:bg-paper"
+          variant="outline"
+          onPress={onReset}
+          className="h-12 rounded-xl border-carbon/20 bg-white px-6 text-base font-semibold text-carbon hover:bg-paper hover:text-carbon focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2"
         >
           Send another enquiry
-        </button>
+        </Button>
       </div>
       </div>
     </div>

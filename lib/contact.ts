@@ -11,7 +11,6 @@ export type EnquiryProduct = {
 export const REQUIREMENTS = [
   { value: "Wedding Cards", label: "Wedding cards" },
   { value: "Sagun Envelopes", label: "Shagun envelopes" },
-  { value: "Rakhi Packaging Item", label: "Rakhi packaging" },
 ] as const;
 
 export const WEDDING_CARD_TYPES = [
@@ -33,8 +32,6 @@ export function requirementFromSubject(subject: string) {
       return { requirement: "Wedding Cards", subRequirement: "General Wedding Cards" };
     case "Shagun Envelopes":
       return { requirement: "Sagun Envelopes", subRequirement: "" };
-    case "Rakhi":
-      return { requirement: "Rakhi Packaging Item", subRequirement: "" };
     default:
       return { requirement: "", subRequirement: "" };
   }

@@ -4,7 +4,6 @@ import { useEffect, useRef } from "react";
 
 const TEXT_ITEMS = [
   "Wedding Cards",
-  "Rakhi Packaging",
   "Shagun Envelopes",
   "Premium Printing",
   "Pan-India Delivery",

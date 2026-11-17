@@ -115,6 +115,16 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
 
+    if (body?.service === "quick") {
+      return NextResponse.json(
+        {
+          error: "Shiprocket Quick is no longer available. Refresh the page to continue with standard delivery.",
+          code: "DELIVERY_SERVICE_UNAVAILABLE",
+        },
+        { status: 400 },
+      );
+    }
+
     const customer = normalizeCustomer(body?.customer);
     const validationError = validateCustomer(customer);
 
