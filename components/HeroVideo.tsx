@@ -1,7 +1,7 @@
 import styles from "./HeroVideo.module.css";
 
 const HERO_VIDEO_URL =
-  "https://res.cloudinary.com/dhbevwau9/video/upload/v1794907952/trai_version_3_dhaw8n.mp4";
+  "https://res.cloudinary.com/dhbevwau9/video/upload/v1794909928/trai_version_4_rxwu61.mp4";
 
 export default function HeroVideo() {
   return (
