@@ -9,7 +9,7 @@ export type TrackingStep = {
 
 export type TrackingProgress = {
   steps: TrackingStep[];
-  notice: { title: string; description: string; tone: "warning" | "danger" | "neutral" } | null;
+  notice: { title: string; description: string | null; tone: "warning" | "danger" | "neutral" } | null;
 };
 
 const milestones = [
@@ -89,7 +89,7 @@ export function getOrderTrackingProgress(tracking: OrderTracking): TrackingProgr
       notice: {
         title: label,
         description: cancelled
-          ? "The courier reports that this shipment was cancelled. Contact us for help with your order."
+          ? null
           : "The courier reports a return. Contact us for the next steps for your order.",
         tone: cancelled ? "danger" : "warning",
       },

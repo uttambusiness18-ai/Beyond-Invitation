@@ -28,7 +28,7 @@ export default function OrderTrackingTimeline({ progress, formatDate }: {
         <AlertCircle aria-hidden="true" size={20} className={styles.noticeIcon} />
         <div>
           <p className={styles.noticeTitle}>{notice.title}</p>
-          <p className={styles.noticeDescription}>{notice.description}</p>
+          {notice.description && <p className={styles.noticeDescription}>{notice.description}</p>}
         </div>
       </div>}
       {steps.length > 0 && <div className={styles.progress}>
@@ -53,7 +53,8 @@ export default function OrderTrackingTimeline({ progress, formatDate }: {
                 <div className={styles.stepContent}>
                   <p className={styles.stepLabel}>{step.label}<span className="sr-only">: {stateLabel}</span></p>
                   {date ? <time dateTime={step.date!} className={styles.stepDate}>{date}</time>
-                    : <p className={styles.stepDate} aria-hidden="true">{stateLabel}</p>}
+                    : (step.state === "current" || step.state === "upcoming") &&
+                      <p className={styles.stepDate} aria-hidden="true">{stateLabel}</p>}
                 </div>
               </li>
             );
@@ -74,7 +75,7 @@ export function CourierActivityTimeline({ tracking, formatDate }: Props) {
         <span>Courier activity <span className={styles.count}>{events.length}</span></span>
         <ChevronDown size={18} aria-hidden="true" className={styles.chevron} />
       </summary>
-      <p className={styles.activityHint}>Latest update first · All times in India time</p>
+      <p className={styles.activityHint}>Latest update first</p>
       <ol className={styles.events} aria-label="Courier activity, latest first">
         {events.map((event, index) => {
           const date = formatDate(event.date);

@@ -147,7 +147,7 @@ export default function OrderTracking({ orderId, trackingToken }: { orderId: str
             </dl>}
           {href && <a href={href} target="_blank" rel="noopener noreferrer" className={`mt-4 ${linkClass}`}>View on Shiprocket<ArrowUpRight aria-hidden="true" className="h-4 w-4" /></a>}
           <CourierActivityTimeline tracking={tracking} formatDate={trackingDate} />
-          {checked && <p className="mt-4 text-xs text-ink-mid">Last checked {checked}. All times shown in India time.</p>}
+          {checked && <p className="mt-4 text-xs text-ink-mid">Last updated at {checked}</p>}
         </div>}
       </div>
     </div>
