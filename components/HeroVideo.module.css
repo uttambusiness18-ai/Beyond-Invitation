@@ -1,4 +1,6 @@
 .hero {
+  /* Navbar stays in the page flow, including its one-pixel bottom border. */
+  --header-height: calc(4rem + 1px);
   width: 100%;
   overflow: hidden;
   background: #700707;
@@ -8,8 +10,18 @@
   display: block;
   width: 100%;
   height: auto;
+  max-height: max(0px, calc(100vh - var(--header-height)));
+  max-height: max(0px, calc(100svh - var(--header-height)));
   aspect-ratio: 1284 / 724;
+  object-fit: cover;
+  object-position: center;
   pointer-events: none;
+}
+
+@media (min-width: 640px) {
+  .hero {
+    --header-height: calc(4.5rem + 1px);
+  }
 }
 
 /* Suppress browser playback overlays as well as the native control bar. */
