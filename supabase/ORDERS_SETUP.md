@@ -18,10 +18,14 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-existing-public-key
 # New: server-only order storage (or use SUPABASE_SERVICE_ROLE_KEY):
 SUPABASE_SECRET_KEY=your-supabase-secret-key
 
-NEXT_PUBLIC_RAZORPAY_KEY_ID=your-razorpay-key-id
+RAZORPAY_KEY_ID=your-razorpay-key-id
 RAZORPAY_KEY_SECRET=your-razorpay-key-secret
 RAZORPAY_WEBHOOK_SECRET=your-webhook-secret
 ```
+
+`RAZORPAY_KEY_ID` is preferred. Existing `NEXT_PUBLIC_RAZORPAY_KEY_ID` configurations remain supported as a fallback. If both are set, the server key takes precedence. Use the matching `RAZORPAY_KEY_SECRET` from the same Razorpay account and mode. The order API sends the selected public key ID to Checkout; the secret stays on the server.
+
+Run `npm run checkout:check` to check credentials and the order-table schema without creating an order or taking payment. It loads local environment files using Next.js precedence; `npm run checkout:check -- --env-only` checks only the current process environment. A local pass does not validate Vercel's configuration. After changing Vercel environment variables, redeploy. Unexpected order failures log `Checkout failed` with the failing stage and provider error code, without customer data or credentials.
 
 The public Supabase key cannot create tables or perform trusted payment writes. Apply the migration only when installing order storage in a new project; do not run it again if `website_orders` and `mark_website_order_paid` already exist. Keep the Supabase server key and Razorpay webhook secret configured in each deployment.
 

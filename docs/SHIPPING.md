@@ -47,7 +47,7 @@ Razorpay key rotation also requires reviewing the stored payment-key association
 
 ## Duplicate prevention and recovery
 
-The merchant reference is the website order UUID converted to a stable decimal string. Before any create request, an atomic Postgres update claims the exact saved JSONB snapshot. Concurrent clicks can produce only one successful claim. Only one Shiprocket create POST is sent, and payment/webhook retries do not create shipments.
+New merchant references encode the complete website order UUID in base 36 with a `BI` prefix (27 alphanumeric characters). This fits Shiprocket Quick's 30-character dashboard limit as well as the API's 50-character limit, without truncating the UUID. Existing attempts keep their saved reference; legacy attempts without a saved reference retain the original decimal UUID. Existing Shiprocket orders are not renamed. Before any create request, an atomic Postgres update claims the exact saved JSONB snapshot. Concurrent clicks can produce only one successful claim. Only one Shiprocket create POST is sent, and payment/webhook retries do not create shipments.
 
 - **Created:** the saved provider IDs are reused; creation is not repeated.
 - **Failed:** Shiprocket explicitly rejected creation. Staff can fix the account/pickup issue and retry with measured package details.
@@ -69,8 +69,10 @@ Each new website order gets a cryptographically random private token; only its S
 
 No new environment variable, scheduled job, webhook or database migration is required. Existing guest orders created before this feature have no private tracking token; signing in later does not claim those orders by email. For those orders, staff can share Shiprocket's own tracking link. The new random links cannot be recovered from the stored hash if lost.
 
-Tracking uses Shiprocket's read-only [`GET /courier/track/shipment/{shipment_id}`](https://www.postman.com/shiprocketdev/shiprocket-dev-s-public-workspace/request/rbc1yz6/get-tracking-through-shipment-id). It validates returned order/shipment IDs against the saved linked shipment and only sends selected tracking fields to the browser. Reads do not update the fulfillment JSONB snapshot, so they cannot interfere with shipment creation or reconciliation.
+Tracking uses Shiprocket's read-only [`GET /courier/track/shipment/{shipment_id}`](https://www.postman.com/shiprocketdev/shiprocket-dev-s-public-workspace/request/rbc1yz6/get-tracking-through-shipment-id), accepting both direct responses and responses keyed by the requested shipment ID. When courier scans are unavailable (including cancelled AWBs), it reads `/orders/show/{order_id}`, verifies the saved order/shipment pair, and displays the provider's current order status without inventing activity history. Missing tracking identifiers also require this verification; conflicting identifiers are rejected. Only selected tracking fields reach the browser. Reads do not update the fulfillment JSONB snapshot, so they cannot interfere with shipment creation or reconciliation.
 
 ## Validation
+
+`node --test tests/shiprocket-tracking.test.cjs tests/order-tracking.test.cjs` covers live response formats, cancelled and pending shipments, courier scans, identity checks, read-only behavior, and customer/guest access checks before cached results are served. Provider calls in these tests are mocked.
 
 `node --test tests/shiprocket.test.cjs tests/order-fulfillment.test.cjs tests/fulfillment-admin.test.cjs tests/shipping-payment.test.cjs` covers provider responses, payment/environment checks, payload totals, duplicate claims, ambiguous outcomes, reconciliation and administrator access. These tests mock provider writes; they do not create real shipments.

@@ -5,22 +5,32 @@ let client: Razorpay | null = null;
 let clientKeyId: string | undefined;
 let clientSecret: string | undefined;
 
+export class RazorpayConfigurationError extends Error {
+  readonly code = "RAZORPAY_CONFIGURATION_ERROR";
+}
+
 /** Persist the environment used for this payment; never infer it later from current settings. */
 export function getRazorpayPaymentContext(): { mode: "test" | "live"; keyId: string } {
-  const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID?.trim() || "";
-  if (keyId.startsWith("rzp_test_")) return { mode: "test", keyId };
-  if (keyId.startsWith("rzp_live_")) return { mode: "live", keyId };
-  throw new Error("Configure a valid Razorpay test or live key before accepting orders.");
+  // Checkout receives this public identifier from the order API. A server-only
+  // name avoids depending on NEXT_PUBLIC_* values frozen into a previous build.
+  const keyId = process.env.RAZORPAY_KEY_ID?.trim() ||
+    process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID?.trim() || "";
+  if (/^rzp_test_[A-Za-z0-9]+$/.test(keyId)) return { mode: "test", keyId };
+  if (/^rzp_live_[A-Za-z0-9]+$/.test(keyId)) return { mode: "live", keyId };
+  throw new RazorpayConfigurationError(
+    "Set RAZORPAY_KEY_ID (or NEXT_PUBLIC_RAZORPAY_KEY_ID) to a valid Razorpay test or live key.",
+  );
+}
+
+function getRazorpaySecret(): string {
+  const secret = process.env.RAZORPAY_KEY_SECRET?.trim();
+  if (!secret) throw new RazorpayConfigurationError("RAZORPAY_KEY_SECRET is missing.");
+  return secret;
 }
 
 export function getRazorpay(): Razorpay {
-  const key_id = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
-  const key_secret = process.env.RAZORPAY_KEY_SECRET;
-  if (!key_id || !key_secret) {
-    throw new Error(
-      "Razorpay env vars missing: set NEXT_PUBLIC_RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET.",
-    );
-  }
+  const { keyId: key_id } = getRazorpayPaymentContext();
+  const key_secret = getRazorpaySecret();
   if (!client || clientKeyId !== key_id || clientSecret !== key_secret) {
     client = new Razorpay({ key_id, key_secret });
     clientKeyId = key_id;
@@ -41,8 +51,7 @@ export function verifyPaymentSignature(params: {
   paymentId: string;
   signature: string;
 }): boolean {
-  const secret = process.env.RAZORPAY_KEY_SECRET;
-  if (!secret) throw new Error("RAZORPAY_KEY_SECRET missing.");
+  const secret = getRazorpaySecret();
   const expected = crypto
     .createHmac("sha256", secret)
     .update(`${params.orderId}|${params.paymentId}`)

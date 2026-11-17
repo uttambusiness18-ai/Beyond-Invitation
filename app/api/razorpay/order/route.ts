@@ -1,10 +1,16 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { getRazorpay } from "@/lib/razorpay";
+import { getRazorpay, getRazorpayPaymentContext } from "@/lib/razorpay";
 import { CheckoutValidationError, resolveCartProducts } from "@/lib/checkout";
 import { quoteCartShipping, ShippingQuoteError } from "@/lib/cart-shipping";
 import { isValidIndianPincode, isValidDeliveryPlaceId } from "@/lib/shipping";
-import { AddressGeocodingError, lookupDeliveryPlace } from "@/lib/address-geocoding";
-import { AddressGeocodingBudgetError, claimAddressGeocodingBudget } from "@/lib/address-geocoding-budget";
+import {
+  AddressGeocodingError,
+  lookupDeliveryPlace,
+} from "@/lib/address-geocoding";
+import {
+  AddressGeocodingBudgetError,
+  claimAddressGeocodingBudget,
+} from "@/lib/address-geocoding-budget";
 import {
   attachRazorpayOrder,
   createWebsiteOrder,
@@ -15,6 +21,30 @@ import { getActiveResellerFromCookies } from "@/lib/reseller";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+function logCheckoutFailure(stage: string, error: unknown) {
+  const detail =
+    error && typeof error === "object"
+      ? (error as {
+          code?: unknown;
+          statusCode?: unknown;
+          error?: { code?: unknown };
+        })
+      : {};
+  const code = detail.code ?? detail.error?.code;
+  // Provider errors can include request headers or customer data. Log only
+  // the failing operation and machine-readable diagnostics, never the payload.
+  console.error("Checkout failed", {
+    stage,
+    code:
+      typeof code === "string" && /^[A-Z0-9_]{1,64}$/.test(code)
+        ? code
+        : "UNKNOWN",
+    ...(typeof detail.statusCode === "number"
+      ? { statusCode: detail.statusCode }
+      : {}),
+  });
+}
 
 function safeTrim(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
@@ -81,6 +111,7 @@ function validateCustomer(customer: OrderCustomer) {
 }
 
 export async function POST(request: NextRequest) {
+  let stage = "request_validation";
   try {
     const body = await request.json().catch(() => ({}));
 
@@ -125,32 +156,48 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    stage = "cart_resolution";
     const reseller = await getActiveResellerFromCookies();
     const products = await resolveCartProducts(body.items, reseller);
     let deliveryLocation = body.deliveryLocation;
     let deliveryPlaceId: string | undefined;
     if (body.service === "quick") {
       if (!isValidDeliveryPlaceId(body.deliveryPlaceId)) {
-        return NextResponse.json({
-          error: "Please locate your delivery address again before paying.",
-          code: "DELIVERY_LOCATION_REQUIRED",
-        }, { status: 400 });
+        return NextResponse.json(
+          {
+            error: "Please locate your delivery address again before paying.",
+            code: "DELIVERY_LOCATION_REQUIRED",
+          },
+          { status: 400 },
+        );
       }
       // Revalidate the provider reference against the actual checkout address.
       // Browser coordinates and a place ID must not be allowed to point at different destinations.
       claimAddressGeocodingBudget(request);
-      const destination = await lookupDeliveryPlace(body.deliveryPlaceId, customer);
-      if (destination.status !== "matched" || !destination.location || !destination.placeId) {
-        return NextResponse.json({
-          error: "Your delivery location needs to be checked again. Review your address before paying.",
-          code: "DELIVERY_LOCATION_CHANGED",
-        }, { status: 409 });
+      const destination = await lookupDeliveryPlace(
+        body.deliveryPlaceId,
+        customer,
+      );
+      if (
+        destination.status !== "matched" ||
+        !destination.location ||
+        !destination.placeId
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Your delivery location needs to be checked again. Review your address before paying.",
+            code: "DELIVERY_LOCATION_CHANGED",
+          },
+          { status: 409 },
+        );
       }
       deliveryLocation = destination.location;
       deliveryPlaceId = destination.placeId;
     }
     // Recheck with Shiprocket before taking any payment. Never accept a fee,
     // product weight, courier or total supplied by the browser as authoritative.
+    stage = "shipping_quote";
     const shipping = await quoteCartShipping(products, customer.pincode, {
       refresh: true,
       ...(body.service !== undefined ? { service: body.service } : {}),
@@ -190,14 +237,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    stage = "payment_configuration";
     const razorpay = getRazorpay();
+    const { keyId } = getRazorpayPaymentContext();
     let websiteOrderId: string;
     let trackingToken: string;
     try {
+      stage = "customer_identity";
       const auth = await getSupabaseAuthServerClient();
       const {
         data: { user },
       } = await auth.auth.getUser();
+      stage = "order_storage";
       const savedOrder = await createWebsiteOrder({
         customer,
         cart,
@@ -208,7 +259,7 @@ export async function POST(request: NextRequest) {
       websiteOrderId = savedOrder.id;
       trackingToken = savedOrder.trackingToken;
     } catch (error) {
-      console.error("Website order could not be saved before checkout:", error);
+      logCheckoutFailure(stage, error);
       return NextResponse.json(
         {
           error: "Checkout is temporarily unavailable. Please try again later.",
@@ -217,6 +268,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    stage = "razorpay_order_creation";
     const razorpayOrder = (await razorpay.orders.create({
       amount: amountPaise,
       currency,
@@ -232,6 +284,7 @@ export async function POST(request: NextRequest) {
     };
 
     try {
+      stage = "payment_order_link";
       if (
         Number(razorpayOrder.amount) !== amountPaise ||
         razorpayOrder.currency !== currency
@@ -242,11 +295,7 @@ export async function POST(request: NextRequest) {
       }
       await attachRazorpayOrder(websiteOrderId, razorpayOrder.id);
     } catch (createError) {
-      console.error("Failed to link website order to Razorpay", {
-        websiteOrderId,
-        razorpayOrderId: razorpayOrder.id,
-        createError,
-      });
+      logCheckoutFailure(stage, createError);
 
       return NextResponse.json(
         {
@@ -259,18 +308,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({
-      websiteOrderId,
-      trackingToken,
-      orderId: razorpayOrder.id,
-      amount: Number(razorpayOrder.amount),
-      currency: razorpayOrder.currency,
-      keyId: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-      shipping,
-    }, { headers: { "Cache-Control": "private, no-store", "Referrer-Policy": "no-referrer" } });
+    return NextResponse.json(
+      {
+        websiteOrderId,
+        trackingToken,
+        orderId: razorpayOrder.id,
+        amount: Number(razorpayOrder.amount),
+        currency: razorpayOrder.currency,
+        keyId,
+        shipping,
+      },
+      {
+        headers: {
+          "Cache-Control": "private, no-store",
+          "Referrer-Policy": "no-referrer",
+        },
+      },
+    );
   } catch (err) {
-    if (err instanceof AddressGeocodingError || err instanceof AddressGeocodingBudgetError) {
-      return NextResponse.json({ error: err.message, code: err.code }, { status: err.status });
+    if (
+      err instanceof AddressGeocodingError ||
+      err instanceof AddressGeocodingBudgetError
+    ) {
+      return NextResponse.json(
+        { error: err.message, code: err.code },
+        { status: err.status },
+      );
     }
     if (err instanceof ShippingQuoteError) {
       return NextResponse.json(
@@ -285,6 +348,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    logCheckoutFailure(stage, err);
     return NextResponse.json(
       {
         error: "Checkout is temporarily unavailable. Please try again later.",

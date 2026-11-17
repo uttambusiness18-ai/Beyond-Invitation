@@ -17,8 +17,10 @@ import {
 import type { FulfillmentOrder, FulfillmentState, ShipmentPackage, QuickBookingState, QuickFulfillmentQuote } from "@/lib/fulfillment-types";
 import { lookupDeliveryPlace } from "@/lib/address-geocoding";
 import { isValidDeliveryLocation, isValidDeliveryPlaceId, type DeliveryLocation } from "@/lib/shipping";
+import { resolveMerchantOrderId } from "@/lib/shiprocket-reference";
 
 export type { FulfillmentOrder, ShipmentPackage } from "@/lib/fulfillment-types";
+export { merchantOrderId } from "@/lib/shiprocket-reference";
 
 export class FulfillmentError extends Error {
   constructor(public readonly code: string, message: string, public readonly status = 422) {
@@ -55,12 +57,6 @@ const positiveId = (value: unknown): number | null => typeof value === "number" 
 
 function validateId(id: string) {
   if (!UUID.test(id)) throw new FulfillmentError("INVALID_ORDER", "Invalid website order reference.", 400);
-}
-
-/** Numeric, stable and at most 39 digits; Shiprocket allows at most 50 characters. */
-export function merchantOrderId(id: string): string {
-  validateId(id);
-  return BigInt(`0x${id.replace(/-/g, "")}`).toString();
 }
 
 export function validateShipmentPackage(input: unknown): ShipmentPackage {
@@ -183,7 +179,7 @@ function view(row: OrderRow): FulfillmentOrder {
     deliveryService: quick ? "quick" : "standard", deliveryLocation,
     ...(deliveryPlaceId ? { deliveryPlaceId } : {}),
     fulfillment: {
-      state, merchantOrderId: merchantOrderId(row.id), package: parcel,
+      state, merchantOrderId: resolveMerchantOrderId(row.id, row.shipping_address.fulfillment), package: parcel,
       shiprocketOrderId: positiveId(saved.shiprocketOrderId), shipmentId: positiveId(saved.shipmentId),
       updatedAt: string(saved.updatedAt) || null, error: string(saved.error) || null,
       quickBooking: quick ? {
@@ -283,7 +279,7 @@ function buildPayload(row: OrderRow, parcel: ShipmentPackage, pickup: string): S
   if (!Number.isFinite(created.getTime())) throw new FulfillmentError("DATE_INVALID", "The saved order date is invalid.");
   const [firstName, ...lastName] = row.customer_name.trim().split(/\s+/);
   return {
-    order_id: merchantOrderId(row.id),
+    order_id: resolveMerchantOrderId(row.id, row.shipping_address.fulfillment),
     // Shiprocket accepts local YYYY-MM-DD HH:mm. This store ships within India.
     order_date: new Date(created.getTime() + 330 * 60_000).toISOString().slice(0, 19).replace("T", " "),
     pickup_location: pickup,
@@ -300,7 +296,7 @@ function buildPayload(row: OrderRow, parcel: ShipmentPackage, pickup: string): S
 }
 
 function providerOrderMatches(row: OrderRow, existing: Awaited<ReturnType<typeof getShiprocketOrder>>) {
-  return existing.merchantOrderId === merchantOrderId(row.id) &&
+  return existing.merchantOrderId === resolveMerchantOrderId(row.id, row.shipping_address.fulfillment) &&
     existing.deliveryPincode === row.shipping_address.pincode &&
     Math.round(existing.total * 100) === row.amount_paise &&
     (deliveryService(row) !== "quick" || existing.shippingMethod === undefined || existing.shippingMethod === "HL");

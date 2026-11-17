@@ -856,10 +856,39 @@ function trackingLink(value: unknown): string | null {
   try {
     const url = new URL(value);
     const hosts = ["shiprocket.co", "www.shiprocket.co", "onlinetracker.shiprocket.co",
-      "shiprocket.in", "www.shiprocket.in", "my.shiprocket.in"];
+      "shiprocket.in", "www.shiprocket.in", "my.shiprocket.in", "app.shiprocket.in"];
     return url.protocol === "https:" && !url.username && !url.password && !url.port && hosts.includes(url.hostname)
       ? url.href : null;
   } catch { return null; }
+}
+
+/** Tracking can show cancelled orders, unlike the fulfillment reconciliation reader. */
+async function getShiprocketTrackingOrder(shipmentId: number, orderId: number): Promise<ShiprocketTracking> {
+  const response = await authenticatedGet(`/orders/show/${orderId}`);
+  const order = record(response.data);
+  if (response.error || response.errors || !order || positiveId(order.id) !== orderId) throw invalidResponse();
+  const shipments = Array.isArray(order.shipments) ? order.shipments : [order.shipments];
+  const matches = shipments.map(record).filter((shipment) => positiveId(shipment?.id) === shipmentId);
+  if (matches.length !== 1 || positiveId(matches[0]?.order_id) !== orderId) throw invalidResponse();
+  const shipment = matches[0]!;
+  const status = trackingText(order.status, 100) ?? trackingText(shipment.status, 100);
+  return {
+    available: Boolean(status), status,
+    courierName: trackingText(shipment.courier, 100), awb: safeAwb(shipment.awb),
+    trackingUrl: null,
+    estimatedDeliveryAt: trackingDate(order.etd_date) ?? trackingDate(shipment.etd),
+    deliveredAt: trackingDate(order.delivered_date) ?? trackingDate(shipment.delivered_date),
+    // Order metadata is not a courier scan. Never invent an activity or its date.
+    events: [],
+  };
+}
+
+/** Zero/null identifiers are Shiprocket's placeholders when an AWB has no tracking. */
+function trackingIdentity(value: unknown): number | undefined {
+  if (value === undefined || value === null || value === "" || value === 0 || value === "0") return undefined;
+  const id = positiveId(value);
+  if (!id) throw invalidResponse();
+  return id;
 }
 
 /** Only reads tracking; never assigns a courier, books a pickup or changes an order. */
@@ -868,48 +897,52 @@ export async function getShiprocketTracking(shipmentId: number, expectedOrderId:
       typeof expectedOrderId !== "number" || !positiveId(expectedOrderId))
     throw new ShiprocketError("INVALID_INPUT", "Provide valid numeric shipment and order IDs.");
   const response = await authenticatedGet(`/courier/track/shipment/${shipmentId}`);
-  const data = record(response.tracking_data);
-  if (!data || response.error || response.errors || data.success === false ||
+  // The shipment endpoint also returns an object keyed by the requested shipment ID.
+  // Never select the first key: it could describe a different customer's shipment.
+  const envelope = response.tracking_data !== undefined ? response : record(response[String(shipmentId)]);
+  const data = record(envelope?.tracking_data);
+  if (!data || response.error || response.errors || envelope?.error || envelope?.errors || data.success === false ||
       (numeric(data.status_code) ?? 0) >= 400) throw invalidResponse();
   const trackStatus = numeric(data.track_status);
-  const empty: ShiprocketTracking = {
-    available: false, status: null, courierName: null, awb: null, trackingUrl: null,
-    estimatedDeliveryAt: null, deliveredAt: null, events: [],
-  };
-  if (trackStatus === 0) {
-    // The documented "no activities found" response uses an error string even
-    // for shipments whose first carrier scan is still pending. Other errors fail closed.
-    if ((data.error && (typeof data.error !== "string" || !/no (?:activities|activity|tracking)\b.*\bfound\b/i.test(data.error))) ||
-        data.errors || (data.shipment_track !== undefined && (!Array.isArray(data.shipment_track) || data.shipment_track.length > 0)) ||
-        (data.shipment_track_activities !== undefined && data.shipment_track_activities !== null &&
-          (!Array.isArray(data.shipment_track_activities) || data.shipment_track_activities.length > 0))) throw invalidResponse();
-    return empty;
-  }
-  if (trackStatus !== 1 || data.error || data.errors || !Array.isArray(data.shipment_track) || data.shipment_track.length !== 1)
-    throw invalidResponse();
-  const shipment = record(data.shipment_track[0]);
+  // These are valid delivery states reported in Shiprocket's `error` field.
+  // Read the linked order to obtain the actual status instead of exposing that message.
+  const unavailable = typeof data.error === "string" && (
+    /no (?:activities|activity|tracking)\b.*\bfound\b/i.test(data.error) ||
+    /\b(?:awb|shipment)\b.*\bcancell?ed\b/i.test(data.error)
+  );
+  if ((trackStatus !== 0 && trackStatus !== 1) || (data.error && !unavailable) || data.errors) throw invalidResponse();
+  const tracks = data.shipment_track ?? [];
+  if (!Array.isArray(tracks) || tracks.length > 1 || (tracks.length === 1 && !record(tracks[0]))) throw invalidResponse();
+  const shipment = record(tracks[0]);
   // The tracking record's `id` is different from `shipment_id` in Shiprocket's API.
-  if (!shipment || positiveId(shipment.shipment_id) !== shipmentId || positiveId(shipment.order_id) !== expectedOrderId)
-    throw invalidResponse();
+  const trackedShipmentId = trackingIdentity(shipment?.shipment_id);
+  const trackedOrderId = trackingIdentity(shipment?.order_id);
+  if ((trackedShipmentId !== undefined && trackedShipmentId !== shipmentId) ||
+      (trackedOrderId !== undefined && trackedOrderId !== expectedOrderId)) throw invalidResponse();
   if (data.shipment_track_activities !== undefined && data.shipment_track_activities !== null &&
       !Array.isArray(data.shipment_track_activities)) throw invalidResponse();
   const activities: unknown[] = Array.isArray(data.shipment_track_activities) ? data.shipment_track_activities : [];
+  if (trackStatus === 0 && activities.length > 0) throw invalidResponse();
+  const status = trackingText(shipment?.current_status, 100);
+  const awb = safeAwb(shipment?.awb_code);
+  const needsOrder = trackStatus === 0 || unavailable || !trackedShipmentId || !trackedOrderId || !status;
+  const order = needsOrder ? await getShiprocketTrackingOrder(shipmentId, expectedOrderId) : null;
+  if (order?.awb && awb && order.awb !== awb) throw invalidResponse();
+  if (trackStatus === 0 || unavailable || !shipment || !status) return order!;
   const events = activities.slice(0, 500).flatMap((activity) => {
     const event = record(activity);
     const date = trackingDate(event?.date);
     const status = trackingText(event?.activity);
     return date && status ? [{ date, status, location: trackingText(event?.location) }] : [];
   }).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 50);
-  const awb = typeof shipment.awb_code === "string" && /^[A-Za-z0-9][A-Za-z0-9_-]{1,99}$/.test(shipment.awb_code.trim())
-    ? shipment.awb_code.trim() : null;
   return {
     available: true,
-    status: trackingText(shipment.current_status, 100),
-    courierName: trackingText(shipment.courier_name, 100) ?? trackingText(data.courier_name, 100),
-    awb,
+    status,
+    courierName: trackingText(shipment.courier_name, 100) ?? trackingText(data.courier_name, 100) ?? order?.courierName ?? null,
+    awb: awb ?? order?.awb ?? null,
     trackingUrl: trackingLink(data.track_url),
-    estimatedDeliveryAt: trackingDate(data.etd) ?? trackingDate(shipment.edd),
-    deliveredAt: trackingDate(shipment.delivered_date),
+    estimatedDeliveryAt: trackingDate(data.etd) ?? trackingDate(shipment.edd) ?? order?.estimatedDeliveryAt ?? null,
+    deliveredAt: trackingDate(shipment.delivered_date) ?? order?.deliveredAt ?? null,
     events,
   };
 }

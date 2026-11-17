@@ -8,6 +8,7 @@
     "start": "next start",
     "test": "node --test",
     "lint": "next lint",
+    "checkout:check": "node scripts/check-checkout.cjs",
     "shiprocket:check": "node scripts/check-shiprocket.cjs",
     "shiprocket:quick:check": "node scripts/check-shiprocket.cjs --quick"
   },

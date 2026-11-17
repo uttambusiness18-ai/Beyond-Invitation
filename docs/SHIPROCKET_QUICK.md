@@ -25,6 +25,12 @@ The quote is a **generic Quick estimate**, not a vehicle-specific guaranteed pri
 
 The staff booking estimate shows the raw provider amount; the customer's shipping charge already includes the INR 50 addition. Booking refreshes the raw estimate and refuses a changed amount until staff checks rates again.
 
+### Existing orders with long references
+
+The Quick dashboard's channel-order field accepts at most 30 characters, even though the shared order API accepts 50. Older website references can have 39 digits, so an existing order may show **Please fill a valid Order Id.** when assigning its courier. New website references use 27 characters; existing references remain unchanged for tracking and duplicate protection.
+
+For an existing order at `/quick/create-order/<Shiprocket order ID>`, clear the **optional** Channel order id field before continuing. That dashboard flow assigns the existing shipment and does not submit a changed channel reference. Review the courier, schedule and charge before booking. This workaround is specific to the existing-order URL; do not create a replacement order. The website admin's Quick booking flow also uses the saved shipment ID directly.
+
 ## Access and configuration
 
 Existing settings are reused:
