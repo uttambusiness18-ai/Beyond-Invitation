@@ -3,7 +3,9 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { ArrowUpRight, LoaderCircle, RefreshCw, Truck } from "lucide-react";
 import type { OrderTracking as TrackingDetails } from "@/lib/order-tracking-types";
+import { getOrderTrackingProgress } from "@/lib/order-tracking-progress";
 import { linkClass, secondaryClass } from "./AccountUI";
+import OrderTrackingTimeline, { CourierActivityTimeline } from "./OrderTrackingTimeline";
 
 const REQUEST_TIMEOUT_MS = 40_000;
 
@@ -105,8 +107,11 @@ export default function OrderTracking({ orderId, trackingToken }: { orderId: str
   }
 
   const href = trackingLink(tracking?.trackingUrl ?? null);
-  const estimatedDelivery = tracking?.estimatedDeliveryAt ? trackingDate(tracking.estimatedDeliveryAt, false) : null;
-  const delivered = tracking?.deliveredAt ? trackingDate(tracking.deliveredAt) : null;
+  const progress = tracking ? getOrderTrackingProgress(tracking) : null;
+  const deliveredStep = progress?.steps.find((step) => step.id === "delivered" && step.state === "complete");
+  const estimatedDelivery = !deliveredStep && !progress?.notice && tracking?.estimatedDeliveryAt
+    ? trackingDate(tracking.estimatedDeliveryAt, false) : null;
+  const delivered = deliveredStep?.date ? trackingDate(deliveredStep.date) : null;
   const checked = tracking?.checkedAt ? trackingDate(tracking.checkedAt) : null;
   const showPanel = loading || Boolean(tracking) || Boolean(error);
 
@@ -118,18 +123,21 @@ export default function OrderTracking({ orderId, trackingToken }: { orderId: str
           : tracking ? <RefreshCw aria-hidden="true" className="h-4 w-4" /> : <Truck aria-hidden="true" className="h-4 w-4" />}
         {loading ? "Checking delivery…" : error ? "Retry tracking" : tracking ? "Refresh tracking" : "Track order"}
       </button>
-      <div id={panelId} hidden={!showPanel} aria-busy={loading} className="mt-4 rounded-xl border border-gold/20 bg-paper/60 p-4 sm:p-5">
+      <div id={panelId} hidden={!showPanel} role="region" aria-label="Order tracking" aria-busy={loading} className="mt-4 rounded-xl border border-gold/20 bg-paper/60 p-4 sm:p-5">
         {loading && <p role="status" className="text-sm text-ink-mid">Checking the latest delivery information…</p>}
         {error && <div role="alert" className="mb-3 text-sm text-red-800">
           <p>{error}</p>
           {tracking && <p className="mt-1">Showing the last available update below; it may be out of date.</p>}
           {signInRequired && <a href="/sign-in?next=%2Faccount" className={`mt-2 ${linkClass}`}>Sign in</a>}
         </div>}
+        <div aria-live="polite" aria-atomic="true">
+          {tracking && <>
+            <p className="text-xs font-semibold uppercase tracking-wider text-ink-mid">Latest status</p>
+            <h3 className="mt-1 break-words text-xl font-semibold text-carbon">{tracking.status}</h3>
+          </>}
+        </div>
         {tracking && <div>
-          <h3 className="text-base font-semibold text-carbon">{tracking.status}</h3>
-          {tracking.state === "preparing" && <p className="mt-2 text-sm leading-relaxed text-ink-mid">Your order is being prepared. Tracking will be available after your parcel is booked with a courier.</p>}
-          {tracking.state === "awaiting_tracking" && <p className="mt-2 text-sm leading-relaxed text-ink-mid">Delivery updates will appear here when the courier makes them available.</p>}
-          {tracking.state === "test_order" && <p className="mt-2 text-sm leading-relaxed text-ink-mid">This is a test order and has no live delivery to track.</p>}
+          {progress && <OrderTrackingTimeline progress={progress} formatDate={trackingDate} />}
           {(tracking.courierName || tracking.awb || delivered || estimatedDelivery) &&
             <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
               {tracking.courierName && <div><dt className="text-ink-mid">Courier</dt><dd className="mt-1 break-words font-medium text-ink">{tracking.courierName}</dd></div>}
@@ -138,19 +146,7 @@ export default function OrderTracking({ orderId, trackingToken }: { orderId: str
                 : estimatedDelivery && <div><dt className="text-ink-mid">Estimated delivery</dt><dd className="mt-1 font-medium text-ink">{estimatedDelivery}</dd></div>}
             </dl>}
           {href && <a href={href} target="_blank" rel="noopener noreferrer" className={`mt-4 ${linkClass}`}>View on Shiprocket<ArrowUpRight aria-hidden="true" className="h-4 w-4" /></a>}
-          {tracking.events.length > 0 && <div className="mt-5 border-t border-gold/20 pt-4">
-            <h4 className="text-sm font-semibold text-carbon">Delivery updates</h4>
-            <ol className="mt-3 space-y-4">
-              {tracking.events.map((event, index) => {
-                const date = trackingDate(event.date);
-                return <li key={`${event.date}-${index}`} className="border-l-2 border-gold/35 pl-3 text-sm">
-                  <p className="font-medium text-ink">{event.status}</p>
-                  {event.location && <p className="mt-1 break-words text-ink-mid">{event.location}</p>}
-                  {date && <time dateTime={event.date} className="mt-1 block text-ink-mid">{date}</time>}
-                </li>;
-              })}
-            </ol>
-          </div>}
+          <CourierActivityTimeline tracking={tracking} formatDate={trackingDate} />
           {checked && <p className="mt-4 text-xs text-ink-mid">Last checked {checked}. All times shown in India time.</p>}
         </div>}
       </div>

@@ -15,7 +15,7 @@ import {
   OurShowroom,
 } from "@/components/Sections";
 
-import HeroCarousel from "@/components/HeroCarousel";
+import HeroVideo from "@/components/HeroVideo";
 import HomeProducts, { HomeProductsSkeleton } from "@/components/home/HomeProducts";
 import Catalogue from "@/components/home/Catalogue";
 import KindWords from "@/components/KindWords";
@@ -149,7 +149,7 @@ export default async function HomePage() {
       <JsonLd data={websiteJsonLd} />
 
       <div data-home-text-motion className="overflow-hidden">
-        <HeroCarousel />
+        <HeroVideo />
 
         <WeddingBoxesEditorial />
 

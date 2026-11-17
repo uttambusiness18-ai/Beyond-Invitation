@@ -1,0 +1,22 @@
+.hero {
+  width: 100%;
+  overflow: hidden;
+  background: #700707;
+}
+
+.video {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1284 / 724;
+  pointer-events: none;
+}
+
+/* Suppress browser playback overlays as well as the native control bar. */
+.video::-webkit-media-controls,
+.video::-webkit-media-controls-enclosure,
+.video::-webkit-media-controls-panel,
+.video::-webkit-media-controls-start-playback-button {
+  display: none !important;
+  -webkit-appearance: none;
+}
