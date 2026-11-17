@@ -41,6 +41,7 @@
   margin: 0;
   color: #fff8ed;
   font-family: Georgia, "Times New Roman", serif;
+  font-style: italic;
   font-size: clamp(1.25rem, 4.4vw, 5rem);
   font-weight: 400;
   line-height: 1.2;
@@ -58,7 +59,6 @@
 
 .lastLine {
   margin-top: 0.12em;
-  font-style: italic;
   animation-delay: calc(var(--overlay-time, 0s) + 180ms);
 }
 

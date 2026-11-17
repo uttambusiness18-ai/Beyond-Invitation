@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import styles from "./HeroVideo.module.css";
 
 const HERO_VIDEO_URL =
-  "https://res.cloudinary.com/dhbevwau9/video/upload/v1794911406/trai_version_4_ymh2mv.mp4";
+  "https://res.cloudinary.com/dhbevwau9/video/upload/v1794913049/trai_version_5_xix5td.mp4";
 const OVERLAY_START_SECONDS = 5;
 const OVERLAY_DURATION_SECONDS = 18;
 
