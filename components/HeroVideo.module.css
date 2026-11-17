@@ -1,6 +1,7 @@
 .hero {
   /* Navbar stays in the page flow, including its one-pixel bottom border. */
   --header-height: calc(4rem + 1px);
+  position: relative;
   width: 100%;
   overflow: hidden;
   background: #700707;
@@ -17,6 +18,68 @@
   object-fit: cover;
   object-position: center;
   pointer-events: none;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: clamp(1rem, 4vw, 4rem);
+  background: linear-gradient(180deg, rgb(16 6 8 / 18%), rgb(16 6 8 / 48%) 50%, rgb(16 6 8 / 32%));
+  pointer-events: none;
+  animation: overlayVisibility 18s linear both paused;
+  animation-delay: var(--overlay-time, 0s);
+}
+
+.overlay[hidden] {
+  display: none;
+}
+
+.headline {
+  max-width: 24ch;
+  margin: 0;
+  color: #fff8ed;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.25rem, 4.4vw, 5rem);
+  font-weight: 400;
+  line-height: 1.2;
+  letter-spacing: -0.035em;
+  text-align: center;
+  text-shadow: 0 2px 18px rgb(0 0 0 / 45%);
+  text-wrap: balance;
+}
+
+.line {
+  display: block;
+  animation: lineReveal 18s cubic-bezier(0.22, 1, 0.36, 1) both paused;
+  animation-delay: var(--overlay-time, 0s);
+}
+
+.lastLine {
+  margin-top: 0.12em;
+  font-style: italic;
+  animation-delay: calc(var(--overlay-time, 0s) + 180ms);
+}
+
+@keyframes overlayVisibility {
+  0% { opacity: 0; }
+  4%, 95% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes lineReveal {
+  0% { opacity: 0; transform: translateY(0.5em); }
+  6%, 100% { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay,
+  .line {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @media (min-width: 640px) {
