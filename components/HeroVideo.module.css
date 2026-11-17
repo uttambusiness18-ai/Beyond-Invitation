@@ -10,9 +10,10 @@
   display: block;
   width: 100%;
   height: auto;
-  max-height: max(0px, calc(100vh - var(--header-height)));
-  max-height: max(0px, calc(100svh - var(--header-height)));
-  aspect-ratio: 1284 / 724;
+  /* Reduce both the natural frame height and viewport limit by 10%. */
+  max-height: max(0px, calc((100vh - var(--header-height)) * 0.9));
+  max-height: max(0px, calc((100svh - var(--header-height)) * 0.9));
+  aspect-ratio: 1284 / 651.6;
   object-fit: cover;
   object-position: center;
   pointer-events: none;
