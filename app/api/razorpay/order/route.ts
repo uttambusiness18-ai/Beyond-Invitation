@@ -252,6 +252,7 @@ export async function POST(request: NextRequest) {
     const { keyId } = getRazorpayPaymentContext();
     let websiteOrderId: string;
     let trackingToken: string;
+    let receiptToken: string;
     try {
       stage = "customer_identity";
       const auth = await getSupabaseAuthServerClient();
@@ -268,6 +269,7 @@ export async function POST(request: NextRequest) {
       });
       websiteOrderId = savedOrder.id;
       trackingToken = savedOrder.trackingToken;
+      receiptToken = savedOrder.receiptToken;
     } catch (error) {
       logCheckoutFailure(stage, error);
       return NextResponse.json(
@@ -322,6 +324,7 @@ export async function POST(request: NextRequest) {
       {
         websiteOrderId,
         trackingToken,
+        receiptToken,
         orderId: razorpayOrder.id,
         amount: Number(razorpayOrder.amount),
         currency: razorpayOrder.currency,

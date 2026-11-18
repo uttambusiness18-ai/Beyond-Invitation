@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { DeliveryLocation, ShippingSelection } from "@/lib/shipping";
+import type { PaymentAttempt } from "@/lib/payment-attempt";
 
 const SCRIPT_SRC = "https://checkout.razorpay.com/v1/checkout.js";
 
@@ -102,8 +103,10 @@ interface StartArgs {
     websiteOrderId: string | null;
     paymentPending: boolean;
     trackingToken: string | null;
+    receiptToken?: string | null;
   }) => void;
   onError?: (message: string) => void;
+  onFailure?: (attempt: PaymentAttempt) => void;
   onDismiss?: () => void;
   onQuoteChanged?: () => void;
 }
@@ -173,6 +176,23 @@ export function useRazorpayCheckout() {
           throw new Error(orderData?.error || "Couldn't start checkout.");
         }
 
+        const trackingToken = typeof orderData.trackingToken === "string" && /^[A-Za-z0-9_-]{43}$/.test(orderData.trackingToken)
+          ? orderData.trackingToken : null;
+        const receiptToken = typeof orderData.receiptToken === "string" && /^[A-Za-z0-9_-]{43}$/.test(orderData.receiptToken)
+          ? orderData.receiptToken : null;
+        let outcome: "open" | "verifying" | "settled" = "open";
+        const reportFailure = (reason: PaymentAttempt["reason"], message: string, paymentId: unknown) => {
+          if (!mounted.current) return;
+          if (args.onFailure) args.onFailure({
+            reason, message,
+            paymentId: typeof paymentId === "string" ? paymentId : null,
+            websiteOrderId: orderData.websiteOrderId ?? null,
+            trackingToken,
+            receiptToken,
+          });
+          else args.onError?.(message);
+        };
+
         const rzp = new window.Razorpay({
           key: orderData.keyId,
           amount: orderData.amount,
@@ -199,11 +219,17 @@ export function useRazorpayCheckout() {
           },
           modal: {
             ondismiss: () => {
+              // A programmatic close or late dismissal must not interrupt verification
+              // or cause a second navigation after the result has been handled.
+              if (outcome !== "open") return;
+              outcome = "settled";
               reset();
               if (mounted.current) args.onDismiss?.();
             },
           },
           handler: async (response: any) => {
+            if (outcome !== "open") return;
+            outcome = "verifying";
             try {
               if (response.razorpay_order_id !== orderData.orderId) {
                 throw new Error("Payment details do not match this checkout. Please contact us with your payment reference.");
@@ -235,27 +261,28 @@ export function useRazorpayCheckout() {
                 paymentId: verifyData.paymentId,
                 websiteOrderId: verifyData.websiteOrderId ?? orderData.websiteOrderId ?? null,
                 paymentPending: !!verifyData.paymentPending,
-                trackingToken: typeof orderData.trackingToken === "string" && /^[A-Za-z0-9_-]{43}$/.test(orderData.trackingToken)
-                  ? orderData.trackingToken : null,
+                trackingToken,
+                receiptToken,
               });
             } catch (e) {
-              if (mounted.current) args.onError?.(
-                e instanceof Error
-                  ? e.message
-                  : "Payment verification failed.",
-              );
+              // The gateway reported completion. Verification errors are uncertain,
+              // not evidence of a failed payment, so do not invite another payment.
+              reportFailure("verification", e instanceof Error ? e.message : "Payment confirmation is pending.", response.razorpay_payment_id);
             } finally {
+              outcome = "settled";
               reset();
             }
           },
         });
 
         rzp.on("payment.failed", (resp: any) => {
+          if (outcome !== "open") return;
+          outcome = "settled";
+          // Close before leaving checkout, and ignore the resulting ondismiss event.
+          try { rzp.close(); } catch { /* The gateway may have closed itself. */ }
           reset();
-          if (mounted.current) args.onError?.(
-            resp?.error?.description ||
-              "Payment failed. Please try again.",
-          );
+          reportFailure("failed", typeof resp?.error?.description === "string"
+            ? resp.error.description : "Your payment could not be completed.", resp?.error?.metadata?.payment_id);
         });
 
         rzp.open();

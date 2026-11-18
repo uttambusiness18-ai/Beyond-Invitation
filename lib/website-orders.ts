@@ -59,11 +59,13 @@ export async function createWebsiteOrder(args: {
   cart: ResolvedCart;
   userId: string | null;
   resellerCode?: string;
-}): Promise<{ id: string; trackingToken: string }> {
+}): Promise<{ id: string; trackingToken: string; receiptToken: string }> {
   const { customer, cart } = args;
   const shippingQuote = shippingQuoteForStorage(cart.shipping);
   const paymentContext = getRazorpayPaymentContext();
   const tracking = createOrderTrackingToken();
+  // Receipt access includes contact/address details; tracking links stay tracking-only.
+  const receipt = createOrderTrackingToken();
   const { data, error } = await getSupabaseAdminClient()
     .from("website_orders")
     .insert({
@@ -81,6 +83,7 @@ export async function createWebsiteOrder(args: {
         paymentMode: paymentContext.mode,
         paymentKeyId: paymentContext.keyId,
         trackingTokenHash: tracking.hash,
+        receiptTokenHash: receipt.hash,
         // Keep the accepted delivery price and courier alongside its address.
         // Existing JSONB storage preserves this without a schema migration.
         ...(shippingQuote ? { shippingQuote } : {}),
@@ -95,7 +98,7 @@ export async function createWebsiteOrder(args: {
     .select("id")
     .single();
   if (error || !data) throw storageError(error);
-  return { id: data.id, trackingToken: tracking.token };
+  return { id: data.id, trackingToken: tracking.token, receiptToken: receipt.token };
 }
 
 export async function attachRazorpayOrder(

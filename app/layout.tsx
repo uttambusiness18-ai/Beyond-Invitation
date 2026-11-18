@@ -97,7 +97,7 @@ interface RootLayoutProps {
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <html lang="en" className={cn("font-sans", inter.variable)}>
+    <html lang="en" className={cn("font-sans", inter.variable, assistant.variable)}>
       {/* Suppress body-only attribute warnings from extensions such as ColorZilla. */}
       <body
         suppressHydrationWarning

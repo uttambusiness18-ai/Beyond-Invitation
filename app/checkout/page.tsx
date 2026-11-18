@@ -11,6 +11,7 @@ import { useRazorpayCheckout } from "@/components/useRazorpayCheckout";
 import { useShippingQuote } from "@/components/useShippingQuote";
 import DeliveryServiceSelector from "@/components/DeliveryServiceSelector";
 import { isValidIndianPincode } from "@/lib/shipping";
+import { clearCheckoutDraft, paymentResultUrl, readCheckoutDraft, saveCheckoutDraft, savePaymentAttempt } from "@/lib/payment-attempt";
 
 type CheckoutForm = {
   name: string;
@@ -70,6 +71,17 @@ export default function CheckoutPage() {
   const selectedStateHasCities = useMemo(() => {
     return Boolean(form.state && cities.length > 0);
   }, [form.state, cities.length]);
+
+  useEffect(() => {
+    const draft = readCheckoutDraft();
+    if (draft) {
+      setForm(draft);
+      if (draft.pincode) {
+        pincodeEdited.current = true;
+        setDeliveryPincode(draft.pincode);
+      }
+    }
+  }, [setDeliveryPincode]);
 
   useEffect(() => {
     if (pincodeEdited.current || !deliveryPincode) return;
@@ -230,6 +242,7 @@ export default function CheckoutPage() {
       return;
     }
 
+    saveCheckoutDraft(form);
     startCheckout({
       expectedAmountPaise: shipping.quote.totalPaise,
       expectedShippingAmountPaise: shipping.quote.amountPaise,
@@ -251,14 +264,14 @@ export default function CheckoutPage() {
         country: form.country.trim(),
         notes: form.notes.trim(),
       },
-      onSuccess: ({ paymentId, websiteOrderId, paymentPending, trackingToken }) => {
+      onSuccess: ({ paymentId, websiteOrderId, paymentPending, trackingToken, receiptToken }) => {
+        clearCheckoutDraft();
         clearCart();
-        const params = new URLSearchParams({ payment_id: paymentId });
-        if (websiteOrderId) params.set("order_id", websiteOrderId);
-        if (paymentPending) params.set("pending", "1");
-        // A fragment keeps the private tracking capability out of HTTP request URLs.
-        const privateLink = websiteOrderId && trackingToken ? `#token=${encodeURIComponent(trackingToken)}` : "";
-        router.push(`/checkout/success?${params}${privateLink}`);
+        router.push(paymentResultUrl({ paymentId, websiteOrderId, trackingToken, receiptToken, status: paymentPending ? "pending" : "success" }));
+      },
+      onFailure: (attempt) => {
+        savePaymentAttempt(attempt);
+        router.push(paymentResultUrl({ ...attempt, status: attempt.reason === "verification" ? "pending" : "failed" }));
       },
       onError: (message) => setError(message),
       onQuoteChanged: shipping.refresh,

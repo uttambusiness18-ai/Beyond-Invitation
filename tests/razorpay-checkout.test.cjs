@@ -173,7 +173,7 @@ function routeHarness(options = {}) {
       createWebsiteOrder: async input => {
         events.push(["save", input]);
         if (options.storageError) throw options.storageError;
-        return { id: "website-offline", trackingToken: "offline-token" };
+        return { id: "website-offline", trackingToken: "offline-token", receiptToken: "offline-receipt-token" };
       },
       attachRazorpayOrder: async (...args) => {
         events.push(["link", args]);
@@ -242,6 +242,7 @@ test("checkout saves and links the order before exposing the SDK's resolved key"
   assert.equal(body.keyId, harness.configurations[0].key_id);
   assert.equal(body.keyId, "rzp_test_serverKey");
   assert.equal(body.orderId, "order_offline");
+  assert.equal(body.receiptToken, "offline-receipt-token");
   assert.equal(response.headers.get("cache-control"), "private, no-store");
 });
 
