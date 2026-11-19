@@ -2,6 +2,7 @@ import { hasMarketingConsent } from "@/lib/cookie-consent";
 import type { PaymentReceipt } from "@/lib/payment-receipt-types";
 
 export const GOOGLE_TAG_ID = "GTM-PM7X2BZK";
+export const GOOGLE_ANALYTICS_ID = "G-X379LZMKP7";
 export const GOOGLE_ADS_ID = "AW-18574685891";
 export const GOOGLE_ADS_PURCHASE_DESTINATION = `${GOOGLE_ADS_ID}/4scPCKSbrrsdEMPtjJlF`;
 export const GOOGLE_TAG_SCRIPT_ID = "beyond-google-tag";
@@ -35,6 +36,7 @@ const queuedPurchases = new Set<string>();
 let initialized = false;
 let configured = false;
 let previousConsent: boolean | undefined;
+let lastTrackedPage: { location: string; referrer: string } | undefined;
 
 /** Never expose private receipt/tracking fragments or customer query parameters. */
 export function googleTrackingUrl(
@@ -61,13 +63,13 @@ function consentSettings(accepted: boolean) {
   return {
     ad_storage: accepted ? "granted" : "denied",
     analytics_storage: accepted ? "granted" : "denied",
-    // Purchase measurement only: no enhanced customer data or remarketing.
+    // Visit and purchase measurement only: no customer data or remarketing.
     ad_user_data: "denied",
     ad_personalization: "denied",
   };
 }
 
-/** One shared Google loader; the published container already includes the Ads destination. */
+/** One shared Google loader for Analytics and the existing Ads destination. */
 export function syncGoogleTracking(): boolean {
   if (
     typeof window === "undefined" ||
@@ -84,26 +86,35 @@ export function syncGoogleTracking(): boolean {
     if (!initialized) {
       window.gtag("consent", "default", consentSettings(false));
       window.gtag("set", {
+        allow_google_signals: false,
         allow_ad_personalization_signals: false,
         allow_enhanced_conversions: false,
       });
       initialized = true;
     }
-    window.gtag("set", {
-      page_location: googleTrackingUrl(window.location.href, true),
-      page_referrer: googleTrackingUrl(document.referrer),
-    });
+    const location = googleTrackingUrl(window.location.href, true);
+    const referrer =
+      lastTrackedPage?.location === location
+        ? lastTrackedPage.referrer
+        : (lastTrackedPage?.location ?? googleTrackingUrl(document.referrer));
+    window.gtag("set", { page_location: location, page_referrer: referrer });
 
     const accepted = hasMarketingConsent();
     if (accepted !== previousConsent) {
       window.gtag("consent", "update", consentSettings(accepted));
       previousConsent = accepted;
     }
-    if (!accepted) return false;
+    if (!accepted) {
+      lastTrackedPage = undefined;
+      return false;
+    }
 
     if (!configured) {
       window.gtag("js", new Date());
       window.gtag("config", GOOGLE_ADS_ID);
+      // Explicit views keep private URL parameters out of initial and SPA hits.
+      // Keep GA enhanced history page views disabled to avoid duplicate views.
+      window.gtag("config", GOOGLE_ANALYTICS_ID, { send_page_view: false });
       configured = true;
     }
     if (!document.getElementById(GOOGLE_TAG_SCRIPT_ID)) {
@@ -114,6 +125,15 @@ export function syncGoogleTracking(): boolean {
       // A later visit/consent update can retry if a transient loading error occurs.
       script.onerror = () => script.remove();
       document.head.appendChild(script);
+    }
+    if (location && lastTrackedPage?.location !== location) {
+      window.gtag("event", "page_view", {
+        send_to: GOOGLE_ANALYTICS_ID,
+        page_location: location,
+        page_referrer: referrer,
+        page_title: document.title,
+      });
+      lastTrackedPage = { location, referrer };
     }
     return true;
   } catch {

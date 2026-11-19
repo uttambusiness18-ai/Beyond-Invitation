@@ -1,7 +1,7 @@
 /*
  * Optional integration check: node scripts/check-google-tag.cjs
- * Downloads only the public Google tag script. Every request made by that script
- * is intercepted in JSDOM, so this check never submits a real Ads conversion.
+ * Downloads only the public Google tag scripts. Every measurement request made
+ * by those scripts is intercepted in JSDOM; no real visits or conversions are sent.
  */
 const assert = require("node:assert/strict");
 const { readFileSync } = require("node:fs");
@@ -11,21 +11,36 @@ const { JSDOM, ResourceLoader, VirtualConsole } = require("jsdom");
 
 const projectRoot = path.resolve(__dirname, "..");
 const scriptUrl = "https://www.googletagmanager.com/gtm.js?id=GTM-PM7X2BZK";
+const analyticsScriptUrl = "https://www.googletagmanager.com/gtag/js?id=G-X379LZMKP7";
 const orderId = "11111111-2222-4333-8444-555555555555";
 const secretMarkers = ["PRIVATE_TRACKING_CAPABILITY", "PRIVATE_RECEIPT_CAPABILITY", "PRIVATE_QUERY_VALUE", "fixture-buyer@example.test"];
 const delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
 async function main() {
-  const response = await fetch(scriptUrl, { signal: AbortSignal.timeout(15000) });
-  assert.ok(response.ok, `Google tag download failed: HTTP ${response.status}`);
-  const googleScript = await response.text();
+  const runtimeKey = (value) => {
+    const url = new URL(value);
+    if (url.protocol !== "https:" || url.hostname !== "www.googletagmanager.com" ||
+        !["/gtm.js", "/gtag/js"].includes(url.pathname)) return null;
+    return `${url.pathname}?id=${url.searchParams.get("id")}`;
+  };
+  const runtimes = new Map(await Promise.all([scriptUrl, analyticsScriptUrl].map(async (url) => {
+    // Only these two known runtime endpoints may reach the network. Redirects
+    // and every subsequent resource request remain blocked by this harness.
+    assert.ok(runtimeKey(url));
+    const response = await fetch(url, { signal: AbortSignal.timeout(15000), redirect: "error" });
+    assert.ok(response.ok, `Google tag download failed: HTTP ${response.status}`);
+    return [runtimeKey(url), Buffer.from(await response.text())];
+  })));
   const requests = [];
   let tagLoads = 0;
+  let analyticsLoads = 0;
   class OfflineResources extends ResourceLoader {
     fetch(url) {
-      if (url === scriptUrl) {
-        tagLoads += 1;
-        return Promise.resolve(Buffer.from(googleScript));
+      const key = runtimeKey(url);
+      if (runtimes.has(key)) {
+        if (key === runtimeKey(scriptUrl)) tagLoads += 1;
+        if (key === runtimeKey(analyticsScriptUrl)) analyticsLoads += 1;
+        return Promise.resolve(runtimes.get(key));
       }
       requests.push({ type: "resource", url });
       return Promise.resolve(Buffer.from(""));
@@ -110,7 +125,21 @@ async function main() {
       const url = new URL(request.url);
       return url.pathname.includes("/conversion/18574685891/") && url.searchParams.get("label") === "4scPCKSbrrsdEMPtjJlF";
     });
-    for (let attempt = 0; attempt < 100 && conversions().length === 0; attempt += 1) await delay(50);
+    const analyticsPageViews = () => requests.flatMap((request) => {
+      const url = new URL(request.url);
+      if (!url.pathname.endsWith("/g/collect")) return [];
+      // GA can send one hit in the URL or batch several newline-separated hits
+      // in a POST body. Combine shared query parameters with each event body.
+      return (request.body ? request.body.split("\n") : [""]).map((body) => {
+        const parameters = new URLSearchParams(url.searchParams);
+        for (const [name, value] of new URLSearchParams(body)) parameters.set(name, value);
+        return parameters;
+      }).filter((parameters) => parameters.get("tid") === tracking.GOOGLE_ANALYTICS_ID && parameters.get("en") === "page_view");
+    });
+    const waitUntil = async (condition) => {
+      for (let attempt = 0; attempt < 100 && !condition(); attempt += 1) await delay(100);
+    };
+    await waitUntil(() => conversions().length > 0 && analyticsPageViews().length > 0);
     assert.equal(conversions().length, 1, "The loaded Google runtime must produce one purchase request");
     const conversion = new URL(conversions()[0].url);
     assert.equal(conversion.searchParams.get("value"), "1250");
@@ -118,17 +147,36 @@ async function main() {
     assert.equal(conversion.searchParams.get("oid"), orderId);
     assert.equal(conversion.searchParams.get("url"), "https://www.beyondinvitation.co.in/checkout/success");
     assert.equal(conversion.searchParams.get("ref"), "https://www.beyondinvitation.co.in/checkout");
+    assert.equal(analyticsPageViews().length, 1, "The loaded Google runtime must produce one initial GA4 page view");
+    assert.equal(analyticsPageViews()[0].get("dl"), "https://www.beyondinvitation.co.in/checkout/success");
+    assert.equal(analyticsPageViews()[0].get("dr"), "https://www.beyondinvitation.co.in/checkout");
 
     window.history.pushState({}, "", `/track-order?private=${secretMarkers[2]}#token=${secretMarkers[0]}`);
     tracking.syncGoogleTracking();
-    await delay(1500);
+    tracking.syncGoogleTracking();
+    assert.equal(tracking.trackPurchaseConversion(purchase), false);
+    await waitUntil(() => analyticsPageViews().length >= 2);
+    assert.equal(analyticsPageViews().length, 2, "Navigation must produce exactly one additional GA4 page view");
+    assert.equal(analyticsPageViews()[1].get("dl"), "https://www.beyondinvitation.co.in/track-order");
+    assert.equal(analyticsPageViews()[1].get("dr"), "https://www.beyondinvitation.co.in/checkout/success");
+    consent.saveCookieConsent("declined");
+    assert.equal(tracking.syncGoogleTracking(), false);
+    window.history.pushState({}, "", `/catalog?private=${secretMarkers[2]}#token=${secretMarkers[0]}`);
+    assert.equal(tracking.syncGoogleTracking(), false);
+    assert.equal(tracking.trackPurchaseConversion(purchase), false);
+    // Give batched requests and the existing Ads history listener time to run.
+    await delay(5500);
+    assert.equal(analyticsPageViews().length, 2, "Declined consent and repeated sync calls must not add GA4 page views");
     assert.equal(conversions().length, 1, "Client navigation must not duplicate the purchase");
     assert.equal(tagLoads, 1, "There must be one shared Google tag loader");
+    assert.equal(analyticsLoads, 1, "The Google runtime must load its GA4 destination once");
     const captured = decodeURIComponent(JSON.stringify(requests));
     for (const marker of secretMarkers) assert.ok(!captured.includes(marker), `Tracking leaked test marker: ${marker}`);
     console.log(JSON.stringify({
       passed: true,
       downloadedTag: tracking.GOOGLE_TAG_ID,
+      analyticsDestination: tracking.GOOGLE_ANALYTICS_ID,
+      interceptedPageViews: analyticsPageViews().length,
       destination: tracking.GOOGLE_ADS_PURCHASE_DESTINATION,
       value: 1250,
       currency: "INR",
@@ -137,6 +185,7 @@ async function main() {
       interceptedRequests: requests.length,
       privateDataLeaked: false,
       realConversionsSent: 0,
+      realPageViewsSent: 0,
     }, null, 2));
   } finally {
     dom.window.close();

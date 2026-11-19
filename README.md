@@ -101,20 +101,20 @@ The default referral-cookie lifetime is:
 
 # Tech Stack
 
-| Technology | Purpose |
-| --- | --- |
-| Next.js 15 | Application framework |
-| React 19 | UI |
-| TypeScript | Type safety |
-| Tailwind CSS 3 | Styling |
-| Supabase Postgres | Product catalogue, account wishlists and website orders |
-| ERPNext / Frappe | Legacy referral and contact integrations |
-| Razorpay | Payments |
-| GSAP | Animations |
-| Lucide React | Icons |
-| isomorphic-dompurify | HTML sanitization |
-| Instagram Graph API | Instagram reel content |
-| Vercel | Recommended deployment platform |
+| Technology           | Purpose                                                 |
+| -------------------- | ------------------------------------------------------- |
+| Next.js 15           | Application framework                                   |
+| React 19             | UI                                                      |
+| TypeScript           | Type safety                                             |
+| Tailwind CSS 3       | Styling                                                 |
+| Supabase Postgres    | Product catalogue, account wishlists and website orders |
+| ERPNext / Frappe     | Legacy referral and contact integrations                |
+| Razorpay             | Payments                                                |
+| GSAP                 | Animations                                              |
+| Lucide React         | Icons                                                   |
+| isomorphic-dompurify | HTML sanitization                                       |
+| Instagram Graph API  | Instagram reel content                                  |
+| Vercel               | Recommended deployment platform                         |
 
 ---
 
@@ -507,7 +507,7 @@ RAZORPAY_KEY_SECRET=
 RAZORPAY_WEBHOOK_SECRET=
 ```
 
-Use the existing NEXT_PUBLIC_SUPABASE_URL and public Auth key for catalogue/account access. The additional secret key is for server-only order writes; never prefix it with NEXT_PUBLIC_. Configure payment.captured and order.paid on the public HTTPS /api/razorpay/webhook URL, using the same webhook secret in Razorpay and the hosting environment.
+Use the existing NEXT*PUBLIC_SUPABASE_URL and public Auth key for catalogue/account access. The additional secret key is for server-only order writes; never prefix it with NEXT_PUBLIC*. Configure payment.captured and order.paid on the public HTTPS /api/razorpay/webhook URL, using the same webhook secret in Razorpay and the hosting environment.
 
 The legacy ERPNext customer, Sales Order and Payment Entry environment variables shown elsewhere in this README are not used by the new order/payment storage flow.
 
@@ -568,12 +568,22 @@ The integration creates an ERPNext Lead containing customer enquiry information.
 
 ---
 
-# Google Ads purchase tracking
+# Google Analytics and Google Ads tracking
 
 The storefront loads Google container `GTM-PM7X2BZK`, which is connected to
-`AW-18574685891`. The purchase conversion destination is
+`AW-18574685891`, and configures Google Analytics 4 measurement ID
+`G-X379LZMKP7` through the same runtime. The purchase conversion destination is
 `AW-18574685891/4scPCKSbrrsdEMPtjJlF`. Configuration is in `lib/google-tracking.ts`;
 no extra environment variables or second Google loader are required.
+
+Analytics sends a `page_view` after optional-cookie acceptance and on storefront
+route changes, including client navigation. Repeated renders and purchase checks
+do not repeat the same view. Admin routes are excluded. Page and referring URLs
+are sanitized before measurement; client navigation uses the previous measured
+page as its referrer. Automatic initial page views are disabled in code. Keep
+**Enhanced measurement > Page views > Page changes based on browser history
+events** disabled for this GA4 stream, because the application sends those views.
+The published stream had no automatic GA4 history page-view listener when checked.
 
 Purchase measurement runs on the checkout result after `/api/orders/receipt`
 returns the matching, authorized order with `paymentStatus: "paid"` and
@@ -601,7 +611,12 @@ Verification:
 
 - `node --test tests/google-tracking.test.cjs tests/cookie-consent.test.cjs tests/payment-result-ui.test.cjs`
 - `node scripts/check-google-tag.cjs` checks the currently published Google runtime
-  with all measurement requests intercepted, so it cannot send a test conversion.
+  for Analytics views and Ads purchases with all measurement requests intercepted,
+  so it cannot send test visits or conversions.
+- After deployment, accept optional cookies and visit a few storefront pages.
+  Check `page_view` events in Google Analytics **Reports > Realtime** for
+  `G-X379LZMKP7`. The supplied screenshot labels this stream **ExpenseFlow Pro Web**;
+  this setup uses its measurement ID exactly as supplied.
 - After deployment, connect Google Tag Assistant to the live checkout. Accept
   optional cookies and complete a genuine live purchase. Confirm one conversion
   with label `4scPCKSbrrsdEMPtjJlF`, the actual INR total, and the order UUID.
@@ -615,6 +630,8 @@ Verification:
 References: [Google's conversion setup](https://support.google.com/google-ads/answer/16560108),
 [transaction IDs](https://support.google.com/google-ads/answer/6386790), and
 [Consent Mode](https://developers.google.com/tag-platform/security/concepts/consent-mode).
+Analytics setup follows Google's [destination configuration](https://developers.google.com/tag-platform/gtagjs/configure)
+and [manual page-view guidance](https://developers.google.com/analytics/devguides/collection/ga4/views).
 
 ---
 
@@ -708,22 +725,22 @@ NEXT_PUBLIC_SITE_URL=https://your-domain.com
 
 Important application API routes include:
 
-| Route | Purpose |
-| --- | --- |
-| `GET /api/search?q=...` | Product search |
-| `POST /api/contact-lead` | ERPNext contact/lead creation |
-| `GET /api/instagram-reels` | Fetch Instagram reels |
-| `GET /api/refresh-instagram-token` | Refresh Instagram access token |
-| `GET /api/reseller` | Retired: HTTP 410 |
-| `POST /api/reseller` | Retired: HTTP 410 |
-| `PATCH /api/reseller` | Retired: HTTP 410 |
-| `POST /api/wishlist/products` | Resolve saved slugs against Supabase products |
-| `GET /api/wishlist` | Read the signed-in user's wishlist |
-| `POST /api/wishlist` | Save a product or merge guest selections |
-| `DELETE /api/wishlist` | Remove a product from the signed-in user's wishlist |
-| `POST /api/razorpay/order` | Create Razorpay order and Supabase website order |
-| `POST /api/razorpay/verify` | Verify payment and fulfil order |
-| `POST /api/razorpay/webhook` | Razorpay webhook fulfilment |
+| Route                              | Purpose                                             |
+| ---------------------------------- | --------------------------------------------------- |
+| `GET /api/search?q=...`            | Product search                                      |
+| `POST /api/contact-lead`           | ERPNext contact/lead creation                       |
+| `GET /api/instagram-reels`         | Fetch Instagram reels                               |
+| `GET /api/refresh-instagram-token` | Refresh Instagram access token                      |
+| `GET /api/reseller`                | Retired: HTTP 410                                   |
+| `POST /api/reseller`               | Retired: HTTP 410                                   |
+| `PATCH /api/reseller`              | Retired: HTTP 410                                   |
+| `POST /api/wishlist/products`      | Resolve saved slugs against Supabase products       |
+| `GET /api/wishlist`                | Read the signed-in user's wishlist                  |
+| `POST /api/wishlist`               | Save a product or merge guest selections            |
+| `DELETE /api/wishlist`             | Remove a product from the signed-in user's wishlist |
+| `POST /api/razorpay/order`         | Create Razorpay order and Supabase website order    |
+| `POST /api/razorpay/verify`        | Verify payment and fulfil order                     |
+| `POST /api/razorpay/webhook`       | Razorpay webhook fulfilment                         |
 
 ---
 
