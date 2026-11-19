@@ -3,6 +3,10 @@
 import type { CatalogBrowsePage, CatalogPrice, CatalogScope, CatalogSort } from "@/lib/catalog-browse-options";
 import { useCatalogPagination } from "@/components/useCatalogPagination";
 import { CatalogPaginationControls } from "@/components/PaginatedProductGrid";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ProductGrid } from "./ProductGrid";
 
 interface PriceRange {
@@ -46,45 +50,48 @@ export default function FilterableProductGrid({
   const isFiltered = priceKey !== "all" || sortKey !== "featured";
 
   return (
-    <div className="space-y-6">
+    <div ref={pagination.listRef} className="space-y-6">
       <div className="flex flex-col gap-4 rounded-2xl border border-gold/20 bg-white/70 p-4 shadow-sm md:flex-row md:items-center md:justify-between">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-base font-semibold text-ink">Price</span>
+        <RadioGroup
+          value={priceKey}
+          onChange={(value) => setPrice(value as CatalogPrice)}
+          orientation="horizontal"
+          className="flex flex-wrap items-center gap-2 md:w-auto"
+        >
+          <Label className="text-base font-semibold text-ink">Price</Label>
 
           {PRICE_RANGES.map((range) => (
-            <button
+            <RadioGroupItem
               key={range.key}
-              type="button"
-              onClick={() => setPrice(range.key)}
-              aria-pressed={priceKey === range.key}
-              className={`rounded-full border px-3.5 py-1.5 text-base font-medium transition ${
+              value={range.key}
+              className={`h-auto w-auto rounded-full border px-3.5 py-1.5 text-base font-medium transition [&_[data-slot=radio-group-indicator]]:hidden ${
                 priceKey === range.key
-                  ? "border-maroon bg-maroon text-gold-light"
+                  ? "border-maroon bg-maroon text-gold-light data-[selected]:border-maroon"
                   : "border-gold/30 bg-cream text-ink-mid hover:border-gold hover:bg-gold-pale"
               }`}
             >
               {range.label}
-            </button>
+            </RadioGroupItem>
           ))}
-        </div>
+        </RadioGroup>
 
         <div className="flex w-full min-w-0 items-center gap-2 md:w-auto">
-          <label htmlFor="sort-products" className="text-base font-semibold text-ink">
+          <Label htmlFor="sort-products" className="text-base font-semibold text-ink">
             Sort
-          </label>
+          </Label>
 
-          <select
+          <NativeSelect
             id="sort-products"
             value={sortKey}
             onChange={(e) => setSort(e.target.value as CatalogSort)}
-            className="min-w-0 flex-1 rounded-lg border border-gold/30 bg-cream px-3 py-1.5 text-base text-ink focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold md:flex-none"
+            className="min-w-0 flex-1 md:w-auto md:flex-none [&_[data-slot=native-select]]:h-auto [&_[data-slot=native-select]]:rounded-lg [&_[data-slot=native-select]]:border-gold/30 [&_[data-slot=native-select]]:bg-cream [&_[data-slot=native-select]]:py-1.5 [&_[data-slot=native-select]]:pl-3 [&_[data-slot=native-select]]:pr-9 [&_[data-slot=native-select]]:focus:border-gold [&_[data-slot=native-select]]:focus:ring-2 [&_[data-slot=native-select]]:focus:ring-gold [&_[data-slot=native-select-icon]]:right-3"
           >
             {SORT_OPTIONS.map((opt) => (
-              <option key={opt.key} value={opt.key}>
+              <NativeSelectOption key={opt.key} value={opt.key}>
                 {opt.label}
-              </option>
+              </NativeSelectOption>
             ))}
-          </select>
+          </NativeSelect>
         </div>
       </div>
 
@@ -104,13 +111,14 @@ export default function FilterableProductGrid({
         </p>
 
         {isFiltered && (
-          <button
+          <Button
             type="button"
-            onClick={clearFilters}
-            className="text-base font-semibold text-maroon underline-offset-4 hover:underline"
+            variant="link"
+            onPress={clearFilters}
+            className="h-auto p-0 text-base font-semibold text-maroon underline-offset-4 hover:underline"
           >
             Clear filters
-          </button>
+          </Button>
         )}
       </div>
 

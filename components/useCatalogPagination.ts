@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
+import { useProductListHistory } from "@/components/useProductListHistory";
 import {
   catalogBrowseQuery,
   emptyCatalogPage,
@@ -25,23 +26,30 @@ export function useCatalogPagination(initialPage: CatalogBrowsePage, scope: Cata
   const queryRef = useRef(scopeQuery);
   const controllerRef = useRef<AbortController | null>(null);
   const failedRequestRef = useRef<PageRequest | null>(null);
+  const { listRef, restoreSnapshot } = useProductListHistory(`catalog:${scopeQuery}`, { page, filters });
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     controllerRef.current?.abort();
     controllerRef.current = null;
     failedRequestRef.current = null;
-    pageRef.current = initialPage;
-    filtersRef.current = DEFAULT_FILTERS;
-    queryRef.current = scopeQuery;
-    setPage(initialPage);
-    setFilters(DEFAULT_FILTERS);
+    const restored = restoreSnapshot();
+    const nextPage = restored?.page ?? initialPage;
+    const nextFilters = restored?.filters ?? DEFAULT_FILTERS;
+    const query = new URLSearchParams(scopeQuery);
+    query.set("price", nextFilters.price);
+    query.set("sort", nextFilters.sort);
+    pageRef.current = nextPage;
+    filtersRef.current = nextFilters;
+    queryRef.current = query.toString();
+    setPage(nextPage);
+    setFilters(nextFilters);
     setLoading(null);
     setError("");
     return () => {
       controllerRef.current?.abort();
       controllerRef.current = null;
     };
-  }, [initialPage, scopeQuery]);
+  }, [initialPage, scopeQuery, restoreSnapshot]);
 
   async function requestPage(request: PageRequest) {
     controllerRef.current?.abort();
@@ -101,7 +109,7 @@ export function useCatalogPagination(initialPage: CatalogBrowsePage, scope: Cata
   }
 
   return {
-    page, loading, error, ...filters,
+    page, loading, error, listRef, ...filters,
     setPrice: (price: CatalogPrice) => changeFilters({ ...filtersRef.current, price }),
     setSort: (sort: CatalogSort) => changeFilters({ ...filtersRef.current, sort }),
     clearFilters: () => changeFilters(DEFAULT_FILTERS),

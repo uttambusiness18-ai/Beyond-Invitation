@@ -13,6 +13,7 @@ import { readPaymentAttempt } from "@/lib/payment-attempt";
 import type { PaymentReceipt } from "@/lib/payment-receipt-types";
 import { CONTACT } from "@/lib/site-config";
 import { formatProductName } from "@/lib/product-name";
+import { formatDeliveryEstimate } from "@/lib/shipping";
 import styles from "./PaymentResult.module.css";
 
 type ResultState = "loading" | "success" | "pending" | "failed" | "unavailable";
@@ -185,6 +186,11 @@ export default function PaymentResult({ outcome, orderId, paymentId }: Props) {
                 <div><p className={styles.label}>DELIVERY ADDRESS</p><address><strong>{receipt.customer.name}</strong><span>{receipt.address.addressLine1}</span>{receipt.address.addressLine2 && <span>{receipt.address.addressLine2}</span>}<span>{receipt.address.city}, {receipt.address.state} {receipt.address.pincode}</span><span>{receipt.address.country}</span></address></div>
                 <div><p className={styles.label}>CONTACT DETAILS</p><div className={styles.contactDetails}><span>{receipt.customer.email}</span><span>{receipt.customer.phone}</span></div><div className={styles.deliveryMethod}><Truck size={17} aria-hidden="true" /><span>{receipt.shipping.service === "quick" ? "Quick delivery" : "Standard delivery"}</span></div><p className={styles.deliveryNote}>Delivery updates will appear in your order tracking.</p></div>
               </div>
+              {state === "success" && <div className={styles.deliveryEstimate}>
+                <p className={styles.estimateLabel}>Estimated delivery</p>
+                <p className={styles.estimateValue}>{formatDeliveryEstimate(receipt.shipping.estimatedDeliveryDays) || "Delivery estimate unavailable."}</p>
+                <p className={styles.estimateNote}>Preparation and personalisation time is additional. Check your order tracking for delivery updates.</p>
+              </div>}
               {receipt.notes && <div className={styles.orderNotes}><p className={styles.label}>YOUR ORDER NOTES</p><p>{receipt.notes}</p></div>}
             </section>
             {state === "success" && <section className={styles.nextSteps} aria-labelledby="next-steps-title"><div className={styles.headingWithIcon}><Heart size={19} aria-hidden="true" /><h2 id="next-steps-title">A little closer to your celebration</h2></div><ol><li><span>01</span><div><h3>Make it yours</h3><p>Our team will get in touch about personalisation and your design proof.</p></div></li><li><span>02</span><div><h3>Made with care</h3><p>Once the details are approved, we’ll prepare your order.</p></div></li><li><span>03</span><div><h3>On its way to you</h3><p>Follow delivery progress with your private tracking link.</p></div></li></ol></section>}

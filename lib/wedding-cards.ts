@@ -31,7 +31,7 @@ export const WEDDING_SORTS = [
 export type WeddingSort = (typeof WEDDING_SORTS)[number]["value"];
 export type PriceBucket = (typeof PRICE_BUCKETS)[number]["value"];
 export type WeddingFilters = {
-  type: "all" | "hindu" | "muslim" | "christian";
+  type: "all" | WeddingCardType;
   price: "any" | PriceBucket;
   sort: WeddingSort;
 };
@@ -46,8 +46,14 @@ export const CARD_TYPES = [
   { value: "muslim", label: "Muslim Wedding Card", itemCategory: "Wedding Card", href: "/collections/wedding-card-muslim" },
   { value: "christian", label: "Christian Wedding Card", itemCategory: "Wedding Card", href: "/collections/wedding-card-christian" },
 ] as const;
-export type WeddingCardType = (typeof CARD_TYPES)[number]["value"];
-export type WeddingCollectionType = WeddingCardType | "bengali" | "boxes";
+export const WEDDING_CARD_CATEGORIES = [
+  { value: "hindu", label: "Hindu Wedding Card", subjects: ["hindu wedding card", "common"], requiresPrice: true },
+  { value: "muslim", label: "Muslim Wedding Card", subjects: ["muslim wedding card", "common"], requiresPrice: false },
+  { value: "christian", label: "Christian Wedding Card", subjects: ["christian wedding card", "common"], requiresPrice: false },
+  { value: "bengali", label: "Bengali Wedding Card", subjects: ["bengali"], requiresPrice: false },
+] as const;
+export type WeddingCardType = (typeof WEDDING_CARD_CATEGORIES)[number]["value"];
+export type WeddingCollectionType = WeddingCardType | "boxes";
 export type WeddingProductPage = {
   products: BrowserProduct[];
   nextOffset: number | null;
@@ -72,7 +78,7 @@ export function parseWeddingFilters(
   const price = params.get("price");
   const sort = params.get("sort");
   return {
-    type: CARD_TYPES.some((item) => item.value === type)
+    type: WEDDING_CARD_CATEGORIES.some((item) => item.value === type)
       ? (type as WeddingFilters["type"])
       : "all",
     price: PRICE_BUCKETS.some((item) => item.value === price)
@@ -96,12 +102,11 @@ export function normalizeWeddingCollectionFilters(
   filters: WeddingFilters,
   collectionType?: WeddingCollectionType,
 ): WeddingFilters {
-  if (!collectionType) return filters;
   return {
     ...filters,
-    type: "all",
+    type: collectionType ? "all" : filters.type,
     price:
-      collectionType === "hindu" && filters.price === "on-request"
+      (collectionType ?? filters.type) === "hindu" && filters.price === "on-request"
         ? "any"
         : filters.price,
   };
@@ -120,14 +125,24 @@ export function weddingFiltersFromSearchParams(
   return normalizeWeddingCollectionFilters(filters, collectionType);
 }
 
+export function matchesWeddingCardCategory(
+  product: Pick<BrowserProduct, "subject" | "price">,
+  type: WeddingCardType,
+) {
+  const category = WEDDING_CARD_CATEGORIES.find((item) => item.value === type)!;
+  return (
+    (category.subjects as readonly string[]).includes(product.subject.trim().toLowerCase()) &&
+    (!category.requiresPrice || hasPrice(product.price))
+  );
+}
+
 export function applyWeddingFilters(
   products: BrowserProduct[],
   filters: WeddingFilters,
 ) {
-  const type = CARD_TYPES.find((item) => item.value === filters.type);
   return products.filter((product) => {
     return (
-      (!type || product.itemCategory === type.itemCategory) &&
+      (filters.type === "all" || matchesWeddingCardCategory(product, filters.type)) &&
       (filters.price === "any" ||
         priceBucketFor(product.price) === filters.price)
     );
@@ -155,11 +170,11 @@ export function sortWeddingProducts(
 }
 
 export function facetCounts(products: BrowserProduct[]) {
-  const types = CARD_TYPES.map((item) => ({
+  const types = WEDDING_CARD_CATEGORIES.map((item) => ({
     value: item.value,
     label: item.label,
     count: products.filter(
-      (product) => product.itemCategory === item.itemCategory,
+      (product) => matchesWeddingCardCategory(product, item.value),
     ).length,
   }));
   const prices = PRICE_BUCKETS.map((item) => ({
@@ -169,6 +184,7 @@ export function facetCounts(products: BrowserProduct[]) {
     ).length,
   })).filter((item) => item.count > 0);
   return {
+    categoryTotal: products.length,
     total: products.length,
     types,
     prices,

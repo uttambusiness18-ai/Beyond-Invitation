@@ -20,7 +20,7 @@ const fixture = (overrides = {}) => ({
   items: [{ itemCode: "WED-123", name: "Ivory Wedding Invitation", quantity: 20, unitPricePaise: 6000, totalPaise: 120000 }],
   customer: { name: "Ananya Sen", email: "ananya@example.test", phone: "+919999999999" },
   address: { addressLine1: "24 Garden Road", addressLine2: "Apartment 5", city: "Kolkata", state: "West Bengal", pincode: "700040", country: "India" },
-  notes: "Please confirm the names before printing.", shipping: { service: "standard", courierName: "Example Courier" }, testMode: false,
+  notes: "Please confirm the names before printing.", shipping: { service: "standard", courierName: "Example Courier", estimatedDeliveryDays: 5 }, testMode: false,
   ...overrides,
 });
 const response = (receipt) => ({ status: 200, body: { receipt } });
@@ -111,6 +111,7 @@ test("paid result shows the stored items, totals, payment references, delivery a
     assert.equal(view.calls[0].options.cache, "no-store");
     assert.match(view.document.querySelector('[aria-labelledby="order-summary-title"]').textContent, /20 items.*Ivory Wedding Invitation.*WED-123.*Qty 20.*60\.00.*1,200\.00/s);
     const delivery = view.document.querySelector('[aria-labelledby="delivery-details-title"]').textContent;
+    assert.match(delivery, /Estimated delivery.*5 days after dispatch.*Preparation and personalisation time is additional/s);
     for (const value of ["Ananya Sen", "24 Garden Road", "Apartment 5", "Kolkata", "700040", "ananya@example.test", "+919999999999", "Standard delivery", "Please confirm the names before printing."]) assert.ok(delivery.includes(value), value);
     const payment = view.document.querySelector('[aria-labelledby="payment-details-title"]').textContent;
     assert.match(payment, /TOTAL PAID.*1,250\.00.*Subtotal.*1,200\.00.*Shipping.*50\.00/s);
@@ -136,7 +137,7 @@ test("failed result keeps the retry link, failure reason, stored order and check
     assert.match(view.document.body.textContent, /Ivory Wedding Invitation/);
     assert.match(view.document.body.textContent, /ananya@example\.test/);
     assert.match(view.document.body.textContent, /pay_declined/);
-    assert.doesNotMatch(view.document.body.textContent, /TOTAL PAID|Payment successful/);
+    assert.doesNotMatch(view.document.body.textContent, /TOTAL PAID|Payment successful|Estimated delivery|days after dispatch/);
     assert.equal(view.storage.getItem("beyond-checkout-draft"), draft);
     assert.equal(view.storage.getItem(`beyond-payment-attempt:${orderId}`), attempt);
   } finally { await view.close(); }
@@ -146,6 +147,7 @@ test("pending confirmation never offers another payment and refreshes to authori
   const view = await mount([response(fixture({ paymentStatus: "pending", paidAt: null, paymentId: null })), response(fixture())], { paymentId: "pay_confirmed" });
   try {
     assert.equal(view.state, "pending");
+    assert.doesNotMatch(view.document.body.textContent, /Estimated delivery|days after dispatch/);
     assert.match(view.document.body.textContent, /No need to make another payment/);
     assert.equal(view.document.querySelector('a[href="/checkout"]'), null);
     assert.equal(view.document.querySelector('a[href^="/track-order"]'), null);
@@ -156,6 +158,17 @@ test("pending confirmation never offers another payment and refreshes to authori
     assert.match(view.document.querySelector('a[href^="/track-order"]').getAttribute("href"), /#token=/);
     assert.equal(view.document.querySelector('a[href="/checkout"]'), null);
   } finally { await view.close(); }
+});
+
+test("paid result handles legacy estimates and same-day delivery without inventing arrival dates", async () => {
+  for (const [days, expected] of [[undefined, "Delivery estimate unavailable."], [null, "Delivery estimate unavailable."], [0, "Same day as dispatch"], [1, "1 day after dispatch"]]) {
+    const view = await mount([response(fixture({ shipping: { service: "standard", courierName: "Example Courier", ...(days !== undefined ? { estimatedDeliveryDays: days } : {}) } }))]);
+    try {
+      assert.equal(view.state, "success");
+      assert.equal(view.document.querySelector(".estimateValue").textContent, expected);
+      assert.match(view.document.querySelector(".deliveryEstimate").textContent, /Preparation and personalisation time is additional/);
+    } finally { await view.close(); }
+  }
 });
 
 test("opening a success URL without a valid order cannot claim successful payment", async () => {
@@ -190,17 +203,17 @@ test("copy actions use full stored references and the private tracking fragment"
   try {
     await view.click('[aria-label="Copy order reference"]');
     assert.equal(view.copied[0], orderId);
-    assert.match(view.document.querySelector('[aria-live="polite"]').textContent, /Order reference copied/);
+    assert.match(view.document.querySelector('.announcement[aria-live="polite"]').textContent, /Order reference copied/);
     await view.click('[aria-label="Copy payment reference"]');
     assert.equal(view.copied[1], "pay_confirmed");
     await view.clickButton("Copy private tracking link");
     assert.equal(view.copied[2], `https://example.test/track-order?order=${orderId}#token=${token}`);
-    assert.match(view.document.querySelector('[aria-live="polite"]').textContent, /Private tracking link copied/);
+    assert.match(view.document.querySelector('.announcement[aria-live="polite"]').textContent, /Private tracking link copied/);
   } finally { await view.close(); }
   const unavailable = await mount([response(fixture())], {}, { clipboardUnavailable: true });
   try {
     await unavailable.click('[aria-label="Copy order reference"]');
-    assert.match(unavailable.document.querySelector('[aria-live="polite"]').textContent, /select and copy the reference/);
+    assert.match(unavailable.document.querySelector('.announcement[aria-live="polite"]').textContent, /select and copy the reference/);
     assert.equal(unavailable.state, "success");
   } finally { await unavailable.close(); }
 });

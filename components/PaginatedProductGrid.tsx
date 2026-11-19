@@ -39,7 +39,7 @@ export default function PaginatedProductGrid({ initialPage, scope = {}, category
 }) {
   const pagination = useCatalogPagination(initialPage, scope);
   return (
-    <div aria-busy={Boolean(pagination.loading)}>
+    <div ref={pagination.listRef} aria-busy={Boolean(pagination.loading)}>
       <p className="mb-5 text-base text-ink-mid" aria-live="polite">
         Showing {pagination.page.products.length} of {pagination.page.total} {pagination.page.total === 1 ? "product" : "products"}
       </p>

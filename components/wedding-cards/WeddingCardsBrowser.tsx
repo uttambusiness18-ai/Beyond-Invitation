@@ -8,8 +8,16 @@ import {
   useRef,
   useState,
 } from "react";
-import { ChevronDown, SlidersHorizontal, X } from "lucide-react";
+import { SlidersHorizontal, X } from "lucide-react";
 import { subscribeMediaQuery } from "@/lib/media-query";
+import { useProductListHistory } from "@/components/useProductListHistory";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import WeddingCardTile from "@/components/wedding-cards/WeddingCardTile";
 import { useWeddingCardsMotion } from "@/components/wedding-cards/WeddingCardsMotion";
 import {
@@ -47,57 +55,41 @@ function Facet({
   onChange: (value: string) => void;
 }) {
   return (
-    <fieldset className="min-w-0">
-      <legend className="mb-2 text-base font-semibold text-carbon">
+    <RadioGroup value={value} onChange={onChange} className="min-w-0 gap-0.5">
+      <Label className="mb-1.5 text-base font-semibold text-carbon">
         {label}
-      </legend>
-      <div className="space-y-0.5">
-        {[{ value: anyValue, label: anyLabel, count: total }, ...options].map(
-          (option) => {
-            const selected = value.toLowerCase() === option.value.toLowerCase();
-            const className = `flex w-full items-center gap-2.5 rounded-sm py-2 text-left text-base transition-colors focus-visible:outline-gold ${selected ? "font-semibold text-maroon" : "text-ink-mid hover:text-maroon"}`;
-            const content = (
-              <>
-                <span
-                  aria-hidden="true"
-                  className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border ${selected ? "border-maroon" : "border-carbon/25"}`}
-                >
-                  <span
-                    className={`h-1.5 w-1.5 rounded-full ${selected ? "bg-maroon" : "bg-transparent"}`}
-                  />
-                </span>
-                <span>{option.label}</span>
-                <span className="ml-auto pl-2 text-sm font-normal tabular-nums text-ink-mid">
-                  {option.count}
-                </span>
-              </>
-            );
-            return (
-              <button
-                key={option.value}
-                type="button"
-                aria-pressed={selected}
-                onClick={() => onChange(option.value)}
-                className={className}
-              >
-                {content}
-              </button>
-            );
-          },
-        )}
-      </div>
-    </fieldset>
+      </Label>
+      {[{ value: anyValue, label: anyLabel, count: total }, ...options].map(
+        (option) => (
+          <RadioGroupItem
+            key={option.value}
+            value={option.value}
+            className="h-auto min-h-11 w-full justify-start gap-2.5 rounded-sm border-0 py-2 text-left text-base text-ink-mid hover:text-maroon data-[selected]:font-semibold data-[selected]:text-maroon [&>[data-slot=radio-group-indicator]]:size-3.5 [&>[data-slot=radio-group-indicator]]:rounded-full [&>[data-slot=radio-group-indicator]]:border [&>[data-slot=radio-group-indicator]]:border-carbon/25 data-[selected]:[&>[data-slot=radio-group-indicator]]:border-maroon [&>[data-slot=radio-group-indicator]>span]:size-1.5"
+          >
+            <span>{option.label}</span>
+            <span className="ml-auto pl-2 text-sm font-normal tabular-nums text-ink-mid">
+              {option.count}
+            </span>
+          </RadioGroupItem>
+        ),
+      )}
+    </RadioGroup>
   );
 }
 
-export function WeddingCardsSkeleton({ productLabel = "wedding cards" }: { productLabel?: string }) {
+export function WeddingCardsSkeleton({
+  productLabel = "wedding cards",
+}: {
+  productLabel?: string;
+}) {
   return (
-    <div role="status" aria-label={`Loading ${productLabel}`} className={gridClass}>
+    <div
+      role="status"
+      aria-label={`Loading ${productLabel}`}
+      className={gridClass}
+    >
       {Array.from({ length: 8 }, (_, index) => (
-        <div
-          key={index}
-          className="min-w-0"
-        >
+        <div key={index} className="min-w-0">
           <div className="aspect-square bg-neutral-100" />
           <div className="space-y-3 pt-4">
             <div className="h-3 w-2/3 rounded bg-paper" />
@@ -119,13 +111,16 @@ export default function WeddingCardsBrowser({
   initialFilters?: WeddingFilters;
   collectionType?: WeddingCollectionType;
 }) {
-  const productLabel = collectionType === "boxes" ? "wedding boxes" : "wedding cards";
+  const productLabel =
+    collectionType === "boxes" ? "wedding boxes" : "wedding cards";
   const normalizeFilters = useCallback(
     (value: WeddingFilters): WeddingFilters =>
       normalizeWeddingCollectionFilters(value, collectionType),
     [collectionType],
   );
-  const [filters, setFilters] = useState(() => normalizeFilters(initialFilters));
+  const [filters, setFilters] = useState(() =>
+    normalizeFilters(initialFilters),
+  );
   const [page, setPage] = useState(initialPage);
   const [loading, setLoading] = useState<"replace" | "append" | null>(null);
   const [error, setError] = useState("");
@@ -142,10 +137,11 @@ export default function WeddingCardsBrowser({
   const facets = page.facets;
   const visible = page.products;
   const visibleKey = visible.map((product) => product.slug).join("|");
-  const hasFilters =
-    filters.type !== "all" ||
-    filters.price !== "any";
-  const browserRef = useRef<HTMLDivElement>(null);
+  const hasFilters = filters.type !== "all" || filters.price !== "any";
+  const { listRef: browserRef, restoreSnapshot, saveSnapshot } = useProductListHistory(
+    `wedding:${collectionType ?? "all"}`,
+    { page, filters },
+  );
   const sheetRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const filterButtonRef = useRef<HTMLButtonElement>(null);
@@ -153,73 +149,87 @@ export default function WeddingCardsBrowser({
   const sortId = useId();
   const sheetTitleId = useId();
 
-  const requestPage = useCallback(async (
-    nextFilters: WeddingFilters,
-    offset = 0,
-    append = false,
-  ) => {
-    if (append && request.current) return;
-    request.current?.abort();
-    const controller = new AbortController();
-    request.current = controller;
-    failedRequest.current = null;
-    setError("");
-    setLoading(append ? "append" : "replace");
-    if (!append) {
-      motion.reorderStart();
-      setPage((previous) => ({ ...previous, products: [], nextOffset: null, total: 0 }));
-    }
-    const query = new URLSearchParams(serializeWeddingFilters(nextFilters));
-    query.set("mode", "wedding");
-    if (collectionType) query.set("collectionType", collectionType);
-    query.set("offset", String(offset));
-    try {
-      const response = await fetch(`/api/catalog/browse?${query}`, {
-        signal: controller.signal,
-        credentials: "same-origin",
-        cache: "no-store",
-      });
-      if (!response.ok) throw new Error("Unable to load designs.");
-      const result: WeddingProductPage = await response.json();
-      if (!Array.isArray(result.products) || !result.facets ||
-          !Number.isSafeInteger(result.total) || result.total < 0 ||
+  const requestPage = useCallback(
+    async (nextFilters: WeddingFilters, offset = 0, append = false) => {
+      if (append && request.current) return;
+      request.current?.abort();
+      const controller = new AbortController();
+      request.current = controller;
+      failedRequest.current = null;
+      setError("");
+      setLoading(append ? "append" : "replace");
+      if (!append) {
+        motion.reorderStart();
+        setPage((previous) => ({
+          ...previous,
+          products: [],
+          nextOffset: null,
+          total: 0,
+        }));
+      }
+      const query = new URLSearchParams(serializeWeddingFilters(nextFilters));
+      query.set("mode", "wedding");
+      if (collectionType) query.set("collectionType", collectionType);
+      query.set("offset", String(offset));
+      try {
+        const response = await fetch(`/api/catalog/browse?${query}`, {
+          signal: controller.signal,
+          credentials: "same-origin",
+          cache: "no-store",
+        });
+        if (!response.ok) throw new Error("Unable to load designs.");
+        const result: WeddingProductPage = await response.json();
+        if (
+          !Array.isArray(result.products) ||
+          !result.facets ||
+          !Number.isSafeInteger(result.total) ||
+          result.total < 0 ||
           (result.nextOffset !== null &&
-            (!Number.isSafeInteger(result.nextOffset) || result.nextOffset <= offset))) {
-        throw new Error("Unable to load designs.");
+            (!Number.isSafeInteger(result.nextOffset) ||
+              result.nextOffset <= offset))
+        ) {
+          throw new Error("Unable to load designs.");
+        }
+        if (controller.signal.aborted || request.current !== controller) return;
+        setPage((previous) => {
+          const products = append
+            ? [...previous.products, ...result.products]
+            : result.products;
+          const unique = new Map(
+            products.map((product) => [product.slug, product]),
+          );
+          return { ...result, products: [...unique.values()] };
+        });
+      } catch {
+        if (controller.signal.aborted || request.current !== controller) return;
+        failedRequest.current = { filters: nextFilters, offset, append };
+        setError("Unable to load designs. Please try again.");
+      } finally {
+        if (request.current === controller) {
+          request.current = null;
+          setLoading(null);
+        }
       }
-      if (controller.signal.aborted || request.current !== controller) return;
-      setPage((previous) => {
-        const products = append ? [...previous.products, ...result.products] : result.products;
-        const unique = new Map(products.map((product) => [product.slug, product]));
-        return { ...result, products: [...unique.values()] };
-      });
-    } catch {
-      if (controller.signal.aborted || request.current !== controller) return;
-      failedRequest.current = { filters: nextFilters, offset, append };
-      setError("Unable to load designs. Please try again.");
-    } finally {
-      if (request.current === controller) {
-        request.current = null;
-        setLoading(null);
-      }
-    }
-  }, [collectionType, motion]);
+    },
+    [collectionType, motion],
+  );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     request.current?.abort();
     request.current = null;
     failedRequest.current = null;
-    const next = normalizeFilters(initialFilters);
+    const restored = restoreSnapshot();
+    const next = normalizeFilters(restored?.filters ?? initialFilters);
     pendingFilters.current = next;
     setFilters(next);
-    setPage(initialPage);
+    setPage(restored?.page ?? initialPage);
     setLoading(null);
     setError("");
     return () => {
       request.current?.abort();
       request.current = null;
     };
-  }, [initialPage, initialFilters, normalizeFilters]);
+  }, [initialPage, initialFilters, normalizeFilters, restoreSnapshot]);
   useLayoutEffect(() => {
     const browser = browserRef.current;
     if (!browser) return;
@@ -227,20 +237,42 @@ export default function WeddingCardsBrowser({
     browser.dataset.motionReady = "true";
     motion.reorderEnd();
     motion.revealNew();
-    return () => { delete browser.dataset.motionReady; };
-  }, [visibleKey, filterKey, motion]);
+    return () => {
+      delete browser.dataset.motionReady;
+    };
+  }, [visibleKey, filterKey, motion, browserRef]);
 
   useEffect(() => {
+    const pathname = window.location.pathname;
     const onPopState = () => {
-      const next = normalizeFilters(parseWeddingFilters(new URLSearchParams(window.location.search)));
-      if (serializeWeddingFilters(next) === serializeWeddingFilters(pendingFilters.current)) return;
+      if (window.location.pathname !== pathname) return;
+      const restored = restoreSnapshot();
+      if (restored) {
+        request.current?.abort();
+        request.current = null;
+        failedRequest.current = null;
+        pendingFilters.current = normalizeFilters(restored.filters);
+        setFilters(pendingFilters.current);
+        setPage(restored.page);
+        setLoading(null);
+        setError("");
+        return;
+      }
+      const next = normalizeFilters(
+        parseWeddingFilters(new URLSearchParams(window.location.search)),
+      );
+      if (
+        serializeWeddingFilters(next) ===
+        serializeWeddingFilters(pendingFilters.current)
+      )
+        return;
       pendingFilters.current = next;
       setFilters(next);
       void requestPage(next);
     };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
-  }, [normalizeFilters, requestPage]);
+  }, [normalizeFilters, requestPage, restoreSnapshot]);
 
   useEffect(() => {
     const sheet = sheetRef.current,
@@ -258,7 +290,7 @@ export default function WeddingCardsBrowser({
     motion.openSheet(sheet, backdrop);
     const frame = window.requestAnimationFrame(() =>
       sheet
-        .querySelector<HTMLElement>("[aria-pressed]")
+        .querySelector<HTMLElement>("input[type='radio']:checked")
         ?.focus({ preventScroll: true }),
     );
     const onKey = (event: KeyboardEvent) => {
@@ -269,9 +301,11 @@ export default function WeddingCardsBrowser({
       if (event.key === "Tab") {
         const focusable = Array.from(
           sheet.querySelectorAll<HTMLElement>(
-            "button:not(:disabled), a[href], select, [tabindex='0']",
+            "button:not(:disabled), a[href], select, input:not(:disabled), [tabindex='0']",
           ),
-        ).filter((element) => !element.hidden);
+        ).filter(
+          (element) => element.tabIndex >= 0 && !element.closest("[hidden]"),
+        );
         const first = focusable[0],
           last = focusable[focusable.length - 1];
         if (
@@ -306,7 +340,12 @@ export default function WeddingCardsBrowser({
 
   function update(patch: Partial<WeddingFilters>) {
     const next = normalizeFilters({ ...pendingFilters.current, ...patch });
-    if (serializeWeddingFilters(next) === serializeWeddingFilters(pendingFilters.current)) return;
+    if (
+      serializeWeddingFilters(next) ===
+      serializeWeddingFilters(pendingFilters.current)
+    )
+      return;
+    if (!request.current && !error) saveSnapshot();
     pendingFilters.current = next;
     setFilters(next);
     const query = new URLSearchParams(window.location.search);
@@ -315,7 +354,11 @@ export default function WeddingCardsBrowser({
     new URLSearchParams(serializeWeddingFilters(next)).forEach((value, key) =>
       query.set(key, value),
     );
-    window.history.pushState(null, "", `${window.location.pathname}${query.size ? `?${query}` : ""}${window.location.hash}`);
+    window.history.pushState(
+      null,
+      "",
+      `${window.location.pathname}${query.size ? `?${query}` : ""}${window.location.hash}`,
+    );
     void requestPage(next);
   }
 
@@ -351,16 +394,17 @@ export default function WeddingCardsBrowser({
         <div className="mb-5 flex h-11 items-center justify-between gap-2 border-b border-carbon/10">
           <h2 className="text-base font-semibold text-carbon">Filters</h2>
           {hasFilters ? (
-            <button
+            <Button
+              variant="link"
               type="button"
               aria-label="Clear filters"
-              onClick={() =>
+              onPress={() =>
                 update({ ...DEFAULT_WEDDING_FILTERS, sort: filters.sort })
               }
-              className="py-2 text-base text-ink-mid underline underline-offset-4 hover:text-maroon"
+              className="h-auto px-0 py-2 text-base text-ink-mid underline underline-offset-4 hover:text-maroon"
             >
               Clear filters
-            </button>
+            </Button>
           ) : null}
         </div>
         {facetControls}
@@ -375,16 +419,21 @@ export default function WeddingCardsBrowser({
             aria-live="polite"
             className="text-base tabular-nums text-ink-mid"
           >
-            {loading === "replace" ? "Loading designs…" : error && !visible.length ? "Unable to load designs" : `${page.total} designs`}
+            {loading === "replace"
+              ? "Loading designs…"
+              : error && !visible.length
+                ? "Unable to load designs"
+                : `${page.total} designs`}
           </p>
           <div className="flex max-w-full flex-wrap items-center gap-x-4 gap-y-2">
-            <button
+            <Button
+              variant="ghost"
               ref={filterButtonRef}
               type="button"
               aria-haspopup="dialog"
               aria-expanded={sheetOpen}
-              onClick={() => setSheetOpen(true)}
-              className="inline-flex min-h-11 items-center gap-1.5 text-base font-semibold text-carbon focus-visible:outline-gold lg:hidden"
+              onPress={() => setSheetOpen(true)}
+              className="min-h-11 gap-1.5 px-0 text-base font-semibold text-carbon focus-visible:outline-gold lg:hidden"
             >
               <SlidersHorizontal size={14} aria-hidden="true" />
               Filters
@@ -394,61 +443,65 @@ export default function WeddingCardsBrowser({
                   className="h-1.5 w-1.5 rounded-full bg-maroon"
                 />
               ) : null}
-            </button>
+            </Button>
             <div className="flex items-center gap-2">
-              <label
+              <Label
                 htmlFor={sortId}
                 className="hidden text-base text-ink-mid sm:block"
               >
                 Sort by
-              </label>
-              <div className="relative">
-                <select
-                  id={sortId}
-                  aria-label={`Sort ${productLabel}`}
-                  value={filters.sort}
-                  onChange={(event) =>
-                    update({
-                      sort: event.target.value as WeddingFilters["sort"],
-                    })
-                  }
-                  className="min-h-11 max-w-full cursor-pointer appearance-none rounded-none border-0 bg-transparent py-2 pl-0 pr-5 text-base font-semibold text-carbon focus-visible:outline-gold"
-                >
-                  {WEDDING_SORTS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown
-                  size={13}
-                  aria-hidden="true"
-                  className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 text-carbon"
-                />
-              </div>
+              </Label>
+              <NativeSelect
+                id={sortId}
+                aria-label={`Sort ${productLabel}`}
+                value={filters.sort}
+                onChange={(event) =>
+                  update({
+                    sort: event.target.value as WeddingFilters["sort"],
+                  })
+                }
+                className="w-auto max-w-full [&_select]:h-11 [&_select]:cursor-pointer [&_select]:rounded-none [&_select]:border-0 [&_select]:bg-transparent [&_select]:py-2 [&_select]:pl-0 [&_select]:pr-5 [&_select]:font-semibold [&_select]:text-carbon [&_svg]:right-0 [&_svg]:size-3.5"
+              >
+                {WEDDING_SORTS.map((option) => (
+                  <NativeSelectOption key={option.value} value={option.value}>
+                    {option.label}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
             </div>
           </div>
         </div>
         {error ? (
-          <div role="alert" className="mb-5 rounded-md border border-carbon/15 bg-white p-4 text-base text-ink-mid">
+          <div
+            role="alert"
+            className="mb-5 rounded-md border border-carbon/15 bg-white p-4 text-base text-ink-mid"
+          >
             <p>{error}</p>
-            <button
+            <Button
+              variant="link"
               type="button"
-              className="mt-2 font-semibold text-maroon underline underline-offset-4"
-              onClick={() => {
+              className="mt-2 h-auto px-0 text-base font-semibold text-maroon underline underline-offset-4"
+              onPress={() => {
                 const retry = failedRequest.current;
-                if (retry) void requestPage(retry.filters, retry.offset, retry.append);
+                if (retry)
+                  void requestPage(retry.filters, retry.offset, retry.append);
               }}
             >
               Try again
-            </button>
+            </Button>
           </div>
         ) : null}
-        {loading === "replace" ? <WeddingCardsSkeleton productLabel={productLabel} /> : visible.length ? (
+        {loading === "replace" ? (
+          <WeddingCardsSkeleton productLabel={productLabel} />
+        ) : visible.length ? (
           <>
             <div data-wedding-grid className={gridClass}>
               {visible.map((product, index) => (
-                <WeddingCardTile key={product.slug} product={product} priority={index < 4} />
+                <WeddingCardTile
+                  key={product.slug}
+                  product={product}
+                  priority={index < 4}
+                />
               ))}
             </div>
             <div className="mt-10 text-center">
@@ -456,16 +509,22 @@ export default function WeddingCardsBrowser({
                 Showing {visible.length} of {page.total} designs
               </p>
               {page.nextOffset !== null ? (
-                <button
+                <Button
+                  variant="outline"
                   type="button"
-                  className={`${secondary} disabled:cursor-wait disabled:opacity-60`}
-                  disabled={loading !== null}
-                  onClick={() => {
-                    if (page.nextOffset !== null) void requestPage(pendingFilters.current, page.nextOffset, true);
+                  className={`h-auto ${secondary} disabled:cursor-wait disabled:opacity-60`}
+                  isDisabled={loading !== null}
+                  onPress={() => {
+                    if (page.nextOffset !== null)
+                      void requestPage(
+                        pendingFilters.current,
+                        page.nextOffset,
+                        true,
+                      );
                   }}
                 >
                   {loading === "append" ? "Loading…" : "Show more"}
-                </button>
+                </Button>
               ) : null}
             </div>
           </>
@@ -474,15 +533,16 @@ export default function WeddingCardsBrowser({
             <p className="text-xl font-normal text-maroon">
               No designs match these filters.
             </p>
-            <button
+            <Button
+              variant="outline"
               type="button"
-              onClick={() =>
+              onPress={() =>
                 update({ ...DEFAULT_WEDDING_FILTERS, sort: filters.sort })
               }
-              className={`mt-5 ${secondary}`}
+              className={`mt-5 h-auto ${secondary}`}
             >
               Clear filters
-            </button>
+            </Button>
           </div>
         ) : null}
       </div>
@@ -506,34 +566,38 @@ export default function WeddingCardsBrowser({
             <h3 id={sheetTitleId} className="text-xl font-semibold text-maroon">
               Filters
             </h3>
-            <button
+            <Button
+              variant="ghost"
               type="button"
               aria-label="Close filters"
-              onClick={() => setSheetOpen(false)}
-              className="p-3 text-carbon"
+              onPress={() => setSheetOpen(false)}
+              className="h-auto p-3 text-carbon"
             >
               <X size={18} aria-hidden="true" />
-            </button>
+            </Button>
           </div>
           {facetControls}
           <div className="mt-6 flex flex-wrap gap-3">
-            <button
+            <Button
               type="button"
-              onClick={() => setSheetOpen(false)}
-              className="flex-1 rounded-md bg-carbon px-6 py-3 text-base font-semibold text-white hover:bg-carbon-dark"
+              onPress={() => setSheetOpen(false)}
+              className="h-auto flex-1 rounded-md bg-carbon px-6 py-3 text-base font-semibold text-white hover:bg-carbon-dark"
             >
-              {loading === "replace" ? "Loading designs…" : `Show ${page.total} designs`}
-            </button>
+              {loading === "replace"
+                ? "Loading designs…"
+                : `Show ${page.total} designs`}
+            </Button>
             {hasFilters ? (
-              <button
+              <Button
+                variant="outline"
                 type="button"
-                onClick={() =>
+                onPress={() =>
                   update({ ...DEFAULT_WEDDING_FILTERS, sort: filters.sort })
                 }
-                className={secondary}
+                className={`h-auto ${secondary}`}
               >
                 Clear filters
-              </button>
+              </Button>
             ) : null}
           </div>
         </div>

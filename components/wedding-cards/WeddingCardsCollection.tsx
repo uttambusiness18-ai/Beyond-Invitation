@@ -28,7 +28,7 @@ export default function WeddingCardsCollection({
         <header className="mb-3 sm:mb-5">
           <h1 id="wedding-cards-title" className="text-[1.75rem] font-semibold leading-tight tracking-[-0.025em] text-maroon sm:text-[2rem]">{title}</h1>
         </header>
-        {errorMessage || !initialPage.facets.total ? (
+        {errorMessage || !initialPage.facets.categoryTotal ? (
           <div className="rounded-3xl border border-gold/20 bg-white/80 p-8 text-center sm:p-12">
             <h2 className="text-2xl font-normal text-maroon">
               {errorMessage ? `Unable to load ${productLabel}.` : emptyTitle}

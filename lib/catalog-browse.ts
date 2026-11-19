@@ -29,25 +29,19 @@ import {
   type CatalogBrowsePage,
 } from "@/lib/catalog-browse-options";
 import {
-  CARD_TYPES,
+  WEDDING_CARD_CATEGORIES,
   PRICE_BUCKETS,
   DEFAULT_WEDDING_FILTERS,
   applyWeddingFilters,
   sortWeddingProducts,
   facetCounts,
+  matchesWeddingCardCategory,
   normalizeWeddingCollectionFilters,
   type BrowserProduct,
   type WeddingFilters,
   type WeddingCollectionType,
   type WeddingProductPage,
 } from "@/lib/wedding-cards";
-
-const WEDDING_COLLECTION_SUBJECTS = {
-  hindu: ["hindu wedding card", "common"],
-  muslim: ["muslim wedding card", "common"],
-  christian: ["christian wedding card", "common"],
-  bengali: ["bengali"],
-};
 
 function validateOffset(offset: number) {
   // The PostgreSQL page function uses an integer offset.
@@ -240,6 +234,39 @@ function weddingPriceBounds(
   }
 }
 
+const readWeddingCategoryCounts = unstable_cache(
+  async (margin: number) => {
+    // Use the same subject and pricing rules as the dedicated collections.
+    // These counts stay independent of the visitor's selected category/price.
+    const [all, ...categories] = await Promise.all([
+      readStorefrontPage({
+        p_limit: 1,
+        p_wedding_collection: true,
+        p_margin_percent: margin,
+      }),
+      ...WEDDING_CARD_CATEGORIES.map((category) =>
+        readStorefrontPage({
+          p_limit: 1,
+          p_subjects: [...category.subjects],
+          p_priced_only: category.requiresPrice,
+          p_margin_percent: margin,
+        }),
+      ),
+    ]);
+    if (!all || categories.some((category) => category === null)) return null;
+    return {
+      total: all.total,
+      types: WEDDING_CARD_CATEGORIES.map((category, index) => ({
+        value: category.value,
+        label: category.label,
+        count: categories[index]!.total,
+      })),
+    };
+  },
+  ["weddingCategoryCounts-v1-subjects"],
+  { revalidate: 60, tags: ["catalogue"] },
+);
+
 const readWeddingBrowsePage = unstable_cache(
   async (
     collectionType: WeddingCollectionType | null,
@@ -247,29 +274,31 @@ const readWeddingBrowsePage = unstable_cache(
     offset: number,
     margin: number,
   ) => {
-    const subjects =
-      collectionType && collectionType !== "boxes"
-        ? WEDDING_COLLECTION_SUBJECTS[collectionType]
-        : undefined;
-    const itemCategory = collectionType === "boxes" ? "Wedding Box" : undefined;
-    const filterCategory = !collectionType
-      ? CARD_TYPES.find((t) => t.value === filters.type)?.itemCategory
+    const selectedType = collectionType ?? filters.type;
+    const selectedCategory = WEDDING_CARD_CATEGORIES.find(
+      (category) => category.value === selectedType,
+    );
+    const subjects: string[] | undefined = selectedCategory
+      ? [...selectedCategory.subjects]
       : undefined;
-    const pricedOnly = collectionType === "hindu";
-    const result = await readStorefrontPage({
-      p_offset: offset,
-      p_limit: COLLECTION_PAGE_SIZE,
-      p_sort: filters.sort,
-      p_margin_percent: margin,
-      p_subjects: subjects,
-      p_item_category: itemCategory,
-      p_wedding_collection: !collectionType,
-      p_filter_item_category: filterCategory,
-      p_include_facets: true,
-      ...weddingPriceBounds(filters.price),
-      ...(pricedOnly ? { p_priced_only: true } : {}),
-    });
-    if (result !== null) {
+    const itemCategory = collectionType === "boxes" ? "Wedding Box" : undefined;
+    const pricedOnly = selectedCategory?.requiresPrice ?? false;
+    const [result, categoryCounts] = await Promise.all([
+      readStorefrontPage({
+        p_offset: offset,
+        p_limit: COLLECTION_PAGE_SIZE,
+        p_sort: filters.sort,
+        p_margin_percent: margin,
+        p_subjects: subjects,
+        p_item_category: itemCategory,
+        p_wedding_collection: !collectionType,
+        p_include_facets: true,
+        ...weddingPriceBounds(filters.price),
+        ...(pricedOnly ? { p_priced_only: true } : {}),
+      }),
+      collectionType ? Promise.resolve(null) : readWeddingCategoryCounts(margin),
+    ]);
+    if (result !== null && (collectionType || categoryCounts)) {
       if (!result.facets)
         throw new Error("Product catalogue returned no filter counts.");
       // Facets precede price filters in the RPC; Hindu's collection only
@@ -290,22 +319,23 @@ const readWeddingBrowsePage = unstable_cache(
         nextOffset: result.nextOffset,
         total: result.total,
         facets: {
+          categoryTotal: categoryCounts?.total ?? facetTotal,
           total: facetTotal,
-          types: CARD_TYPES.map((t) => ({
+          types: categoryCounts?.types ?? WEDDING_CARD_CATEGORIES.map((t) => ({
             value: t.value,
             label: t.label,
             count: subjects
               ? t.value === collectionType
                 ? facetTotal
                 : 0
-              : (result.facets!.types[t.value] ?? 0),
+              : 0,
           })),
           prices,
           showPrice: prices.length >= 2,
         },
       };
     }
-    const source = subjects
+    const source = collectionType && subjects
       ? (await fetchErpProductsBase())
           .filter((product) =>
             subjects.includes(product.subject.trim().toLowerCase()),
@@ -314,24 +344,26 @@ const readWeddingBrowsePage = unstable_cache(
       : itemCategory
         ? await fetchProductsByItemCategoryBase(itemCategory)
         : await fetchWeddingCardsWithCategoriesBase();
-    const displayed = source
-      .map((p) => browserProduct(forDisplay(p, margin)))
-      .filter(
-        (product) =>
-          !pricedOnly || (Number.isFinite(product.price) && product.price > 0),
-      );
+    const displayed = source.map((p) => browserProduct(forDisplay(p, margin)));
+    const categoryProducts = selectedCategory
+      ? displayed.filter((product) => matchesWeddingCardCategory(product, selectedCategory.value))
+      : displayed;
     const matches = sortWeddingProducts(
-      applyWeddingFilters(displayed, filters),
+      applyWeddingFilters(categoryProducts, filters),
       filters.sort,
     );
     const bySlug = new Map(source.map((p) => [p.slug, p]));
     const end = offset + COLLECTION_PAGE_SIZE;
-    const facets = facetCounts(displayed);
-    if (subjects) {
+    const facets = facetCounts(categoryProducts);
+    if (!collectionType) {
+      const categories = facetCounts(displayed);
+      facets.categoryTotal = categories.categoryTotal;
+      facets.types = categories.types;
+    } else if (subjects) {
       // Subject membership need not match the item's ordinary ERP category.
       facets.types = facets.types.map((type) => ({
         ...type,
-        count: type.value === collectionType ? displayed.length : 0,
+        count: type.value === collectionType ? categoryProducts.length : 0,
       }));
     }
     return {
@@ -341,7 +373,7 @@ const readWeddingBrowsePage = unstable_cache(
       facets,
     };
   },
-  ["weddingBrowsePage-v7-common-subject"],
+  ["weddingBrowsePage-v8-subject-categories"],
   { revalidate: 60, tags: ["catalogue"] },
 );
 

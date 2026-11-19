@@ -1,33 +1,76 @@
 export type DeliveryLocation = { latitude: number; longitude: number };
 export type ShippingService = "standard" | "quick";
-export type ShippingSelection = { service: ShippingService; deliveryLocation?: DeliveryLocation; deliveryPlaceId?: string };
+export type ShippingSelection = {
+  service: ShippingService;
+  deliveryLocation?: DeliveryLocation;
+  deliveryPlaceId?: string;
+};
 
 /** Opaque Google place reference; never accept a URL or unbounded input. */
 export function isValidDeliveryPlaceId(value: unknown): value is string {
   return typeof value === "string" && /^[A-Za-z0-9_-]{1,512}$/.test(value);
 }
 
-export function isValidDeliveryLocation(value: unknown): value is DeliveryLocation {
+export function isValidDeliveryLocation(
+  value: unknown,
+): value is DeliveryLocation {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const point = value as Record<string, unknown>;
-  return typeof point.latitude === "number" && Number.isFinite(point.latitude) && Math.abs(point.latitude) <= 90 &&
-    typeof point.longitude === "number" && Number.isFinite(point.longitude) && Math.abs(point.longitude) <= 180;
+  return (
+    typeof point.latitude === "number" &&
+    Number.isFinite(point.latitude) &&
+    Math.abs(point.latitude) <= 90 &&
+    typeof point.longitude === "number" &&
+    Number.isFinite(point.longitude) &&
+    Math.abs(point.longitude) <= 180
+  );
 }
 
 export class ShippingSelectionError extends Error {
-  constructor(public readonly code: string, message: string) { super(message); this.name = "ShippingSelectionError"; }
+  constructor(
+    public readonly code: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = "ShippingSelectionError";
+  }
 }
 
 /** Prices and provider IDs are never accepted as part of the customer's delivery selection. */
 export function parseShippingSelection(value: unknown): ShippingSelection {
-  const input = value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
-  if (input.service === undefined || input.service === "standard") return { service: "standard" };
-  if (input.service !== "quick") throw new ShippingSelectionError("INVALID_DELIVERY_SERVICE", "Choose standard delivery or Shiprocket Quick.");
-  if (!isValidDeliveryLocation(input.deliveryLocation)) throw new ShippingSelectionError("DELIVERY_LOCATION_REQUIRED", "Enter your full delivery address to check Shiprocket Quick.");
-  if (input.deliveryPlaceId !== undefined && !isValidDeliveryPlaceId(input.deliveryPlaceId))
-    throw new ShippingSelectionError("INVALID_DELIVERY_LOCATION", "Please locate your delivery address again.");
-  return { service: "quick", deliveryLocation: { latitude: input.deliveryLocation.latitude, longitude: input.deliveryLocation.longitude },
-    ...(input.deliveryPlaceId !== undefined ? { deliveryPlaceId: input.deliveryPlaceId as string } : {}),
+  const input =
+    value && typeof value === "object" && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : {};
+  if (input.service === undefined || input.service === "standard")
+    return { service: "standard" };
+  if (input.service !== "quick")
+    throw new ShippingSelectionError(
+      "INVALID_DELIVERY_SERVICE",
+      "Choose standard delivery or Shiprocket Quick.",
+    );
+  if (!isValidDeliveryLocation(input.deliveryLocation))
+    throw new ShippingSelectionError(
+      "DELIVERY_LOCATION_REQUIRED",
+      "Enter your full delivery address to check Shiprocket Quick.",
+    );
+  if (
+    input.deliveryPlaceId !== undefined &&
+    !isValidDeliveryPlaceId(input.deliveryPlaceId)
+  )
+    throw new ShippingSelectionError(
+      "INVALID_DELIVERY_LOCATION",
+      "Please locate your delivery address again.",
+    );
+  return {
+    service: "quick",
+    deliveryLocation: {
+      latitude: input.deliveryLocation.latitude,
+      longitude: input.deliveryLocation.longitude,
+    },
+    ...(input.deliveryPlaceId !== undefined
+      ? { deliveryPlaceId: input.deliveryPlaceId as string }
+      : {}),
   };
 }
 
@@ -52,4 +95,14 @@ export interface ShippingQuote {
 
 export function isValidIndianPincode(value: unknown): value is string {
   return typeof value === "string" && /^[1-9]\d{5}$/.test(value);
+}
+
+/** Courier transit time only; preparation time is not included in the quote. */
+export function formatDeliveryEstimate(days: unknown): string | null {
+  if (typeof days !== "number" || !Number.isFinite(days) || days < 0)
+    return null;
+  const wholeDays = Math.ceil(days);
+  if (!Number.isSafeInteger(wholeDays)) return null;
+  if (wholeDays === 0) return "Same day as dispatch";
+  return `${wholeDays} ${wholeDays === 1 ? "day" : "days"} after dispatch`;
 }

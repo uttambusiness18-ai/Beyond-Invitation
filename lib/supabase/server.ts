@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { catalogueFetch } from "@/lib/catalog-fetch";
 
 let client: SupabaseClient | undefined;
 
@@ -18,13 +19,14 @@ export function getSupabaseServerClient(): SupabaseClient {
   }
 
   client = createClient(url, anonKey, {
+    db: { retry: false },
     auth: {
       persistSession: false,
       autoRefreshToken: false,
       detectSessionInUrl: false,
     },
     global: {
-      fetch: (input, init) => fetch(input, { ...init, next: { revalidate: 60, tags: ["catalogue"] } }),
+      fetch: catalogueFetch,
     },
   });
 

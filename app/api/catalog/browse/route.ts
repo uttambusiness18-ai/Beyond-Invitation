@@ -10,7 +10,7 @@ import {
   type CatalogBrowseOptions,
 } from "@/lib/catalog-browse-options";
 import {
-  CARD_TYPES,
+  WEDDING_CARD_CATEGORIES,
   PRICE_BUCKETS,
   WEDDING_SORTS,
   parseWeddingFilters,
@@ -53,10 +53,10 @@ export async function GET(request: Request) {
     const type = q.get("type");
     if (
       (collectionType &&
-        !["boxes", "bengali", ...CARD_TYPES.map((t) => t.value)].includes(
+        !["boxes", ...WEDDING_CARD_CATEGORIES.map((t) => t.value)].includes(
           collectionType,
         )) ||
-      (type && !["all", ...CARD_TYPES.map((t) => t.value)].includes(type)) ||
+      (type && !["all", ...WEDDING_CARD_CATEGORIES.map((t) => t.value)].includes(type)) ||
       (price &&
         !["any", ...PRICE_BUCKETS.map((p) => p.value)].includes(price)) ||
       (sort && !WEDDING_SORTS.some((s) => s.value === sort))

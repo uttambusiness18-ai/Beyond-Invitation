@@ -44,7 +44,7 @@ function harness() {
         paymentKeyId: "PRIVATE_GATEWAY_KEY", trackingTokenHash: hash("T".repeat(43)), receiptTokenHash: hash(token),
         fulfillment: { internalSecret: "PRIVATE_FULFILLMENT" },
         shippingQuote: { subtotalPaise: 4821, amountPaise: 199, totalPaise: 5020,
-          courierName: "Example courier", deliveryPlaceId: "PRIVATE_LOCATION", courierId: 12 },
+          courierName: "Example courier", deliveryPlaceId: "PRIVATE_LOCATION", courierId: 12, estimatedDeliveryDays: 5 },
       },
     },
   };
@@ -96,6 +96,7 @@ test("private receipt returns the paid snapshot and excludes internal order meta
   assert.equal(result.address.addressLine2, "Second floor");
   assert.equal(result.shipping.service, "standard");
   assert.equal(result.shipping.courierName, "Example courier");
+  assert.equal(result.shipping.estimatedDeliveryDays, 5);
   assert.equal(result.testMode, false);
   assert.equal(result.notes, "Gold ink, please");
   assert.doesNotMatch(JSON.stringify(result), /PRIVATE_|trackingTokenHash|receiptTokenHash|basePrice|commission|weightGrams|courierId/);
@@ -202,7 +203,22 @@ test("legacy orders use original saved line prices with aggregate rounding and u
   assert.equal(result.subtotalPaise, 67);
   assert.equal(result.shippingPaise, null);
   assert.equal(result.shipping.courierName, null);
+  assert.equal(result.shipping.estimatedDeliveryDays, null);
   assert.equal(result.testMode, true);
+});
+
+test("receipt keeps the saved delivery duration and tolerates missing or invalid estimates", async () => {
+  const { service, state } = harness();
+  for (const days of [0, 1, 4.5, 7]) {
+    state.row.shipping_address.shippingQuote.estimatedDeliveryDays = days;
+    assert.equal((await service.getPaymentReceipt(orderId, token)).shipping.estimatedDeliveryDays, days);
+  }
+  for (const days of [undefined, null, "5", "", -1, NaN, Infinity, Number.MAX_VALUE]) {
+    state.row.shipping_address.shippingQuote.estimatedDeliveryDays = days;
+    const receipt = await service.getPaymentReceipt(orderId, token);
+    assert.equal(receipt.shipping.estimatedDeliveryDays, null);
+    assert.equal(receipt.paymentStatus, "paid");
+  }
 });
 
 test("corrupt money and database errors fail without leaking internals", async () => {

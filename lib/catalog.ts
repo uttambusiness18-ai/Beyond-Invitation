@@ -9,6 +9,10 @@ import { applyCatalogDetails } from "@/lib/catalog-pricing";
 import { PRODUCTS_PER_PAGE } from "@/lib/product-page";
 import { readStorefrontPage, readStorefrontRows } from "@/lib/storefront-data";
 import {
+  selectSimilarProducts,
+  type SimilarProduct,
+} from "@/lib/similar-products";
+import {
   applyResellerPricingToProducts,
   applyResellerPricingToProduct,
 } from "@/lib/reseller";
@@ -204,7 +208,7 @@ const readCatalogProducts = unstable_cache(
 
     return products;
   },
-  ["buildErpProductList-v9-print-name"],
+  ["buildErpProductList-v10-item-category"],
   { revalidate: 60, tags: ["catalogue"] },
 );
 
@@ -228,7 +232,27 @@ const readCatalogProductBySlug = unstable_cache(
 
     return (await resolveCatalogProducts(data))[0] ?? null;
   },
-  ["catalogProductBySlug-v3-print-name"],
+  ["catalogProductBySlug-v4-item-category"],
+  { revalidate: 60, tags: ["catalogue"] },
+);
+
+// Curated collections share one bounded catalogue read rather than one request
+// per product. Only base prices enter the persistent cache.
+const readCatalogProductsBySlugs = unstable_cache(
+  async (slugs: string[]): Promise<CatalogProduct[]> => {
+    const optimized = await readStorefrontRows({ slugs, limit: slugs.length });
+    if (optimized !== null) return optimized.map(mapCatalogRowToProduct);
+
+    const { data, error } = await getSupabaseServerClient()
+      .from("v_web_products")
+      .select("*")
+      .in("slug", slugs)
+      .limit(slugs.length)
+      .returns<WebProductRow[]>();
+    if (error) throw new Error(`Product catalogue unavailable: ${error.message}`);
+    return resolveCatalogProducts(data ?? []);
+  },
+  ["catalogProductsBySlugs-v1"],
   { revalidate: 60, tags: ["catalogue"] },
 );
 
@@ -307,7 +331,10 @@ export async function fetchErpProducts(): Promise<CatalogProduct[]> {
 }
 
 /** Cache only this page's base products, then price it for the current visitor. */
-export async function fetchErpProductPage(offset = 0, pricedOnly = false): Promise<{
+export async function fetchErpProductPage(
+  offset = 0,
+  pricedOnly = false,
+): Promise<{
   products: CatalogProduct[];
   nextOffset: number | null;
 }> {
@@ -358,49 +385,38 @@ export const fetchErpProductBySlug = cache(
     applyResellerPricingToProduct(await readCatalogProductBySlug(slug)),
 );
 
+/** Preserve curated order, skipping duplicate and unpublished product slugs. */
+export async function fetchErpProductsBySlugs(slugs: string[]): Promise<CatalogProduct[]> {
+  const requested = [...new Set(slugs.map((slug) => slug.trim()).filter(Boolean))];
+  if (!requested.length) return [];
+  const products = await readCatalogProductsBySlugs(requested);
+  const bySlug = new Map(products.map((product) => [product.slug, product]));
+  const ordered = requested.flatMap((slug) => {
+    const product = bySlug.get(slug);
+    return product ? [product] : [];
+  });
+  return applyResellerPricingToProducts(ordered);
+}
+
 /** Read one published gallery on demand without any visitor-pricing lookup. */
-export async function fetchErpProductImages(slug: string): Promise<string[] | null> {
+export async function fetchErpProductImages(
+  slug: string,
+): Promise<string[] | null> {
   return (await readCatalogProductBySlug(slug))?.images ?? null;
 }
 
-/** Preserve collection ordering, but only reprice the related products shown. */
+/** Rank the full published catalogue using the prices this visitor sees. */
 export async function fetchRelatedErpProducts(
-  product: Pick<CatalogProduct, "slug" | "category">,
+  product: SimilarProduct,
   limit = 4,
 ): Promise<CatalogProduct[]> {
   if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) return [];
-  const optimized = await readRelatedStorefrontProducts(
-    product.slug,
-    product.category,
-    limit,
+  // Cache only base catalogue data. Reprice before comparing distances because
+  // visitor margins and rounding can change which prices are equally close.
+  const products = await applyResellerPricingToProducts(
+    await buildErpProductList(),
   );
-  if (optimized !== null) return applyResellerPricingToProducts(optimized);
-  const products =
-    product.category === "wedding"
-      ? await fetchWeddingCardProductsBase()
-      : (await buildErpProductList()).filter(
-          (candidate) => candidate.category === product.category,
-        );
-  return applyResellerPricingToProducts(
-    products
-      .filter((candidate) => candidate.slug !== product.slug)
-      .slice(0, limit),
-  );
+  return selectSimilarProducts(product, products, limit);
 }
-
-const readRelatedStorefrontProducts = unstable_cache(
-  async (slug: string, category: string, limit: number) => {
-    const result = await readStorefrontPage({
-      p_limit: limit,
-      p_exclude_slug: slug,
-      ...(category === "wedding"
-        ? { p_wedding_only: true, p_sort: "recommended" }
-        : { p_category: category }),
-    });
-    return result === null ? null : result.products.map(mapCatalogRowToProduct);
-  },
-  ["relatedStorefrontProducts-v2-print-name"],
-  { revalidate: 60, tags: ["catalogue"] },
-);
 
 export const getCatalogProducts = fetchErpProducts;

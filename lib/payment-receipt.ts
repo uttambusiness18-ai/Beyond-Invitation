@@ -87,7 +87,13 @@ function receiptForOrder(row: OrderRow): PaymentReceipt {
       country: text(address.country),
     },
     notes: text(row.notes),
-    shipping: { service: quote.service === "quick" ? "quick" : "standard", courierName: text(quote.courierName) || null },
+    shipping: {
+      service: quote.service === "quick" ? "quick" : "standard",
+      courierName: text(quote.courierName) || null,
+      estimatedDeliveryDays: typeof quote.estimatedDeliveryDays === "number" &&
+        Number.isSafeInteger(Math.ceil(quote.estimatedDeliveryDays)) && quote.estimatedDeliveryDays >= 0
+        ? quote.estimatedDeliveryDays : null,
+    },
     testMode: address.paymentMode === "test",
   };
 }

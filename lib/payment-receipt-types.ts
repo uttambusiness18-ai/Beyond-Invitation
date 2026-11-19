@@ -27,6 +27,6 @@ export interface PaymentReceipt {
     country: string;
   };
   notes: string;
-  shipping: { service: string; courierName: string | null };
+  shipping: { service: string; courierName: string | null; estimatedDeliveryDays: number | null };
   testMode: boolean;
 }

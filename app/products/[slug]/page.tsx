@@ -499,14 +499,6 @@ function buildFaqJsonLd(product: ProductLike) {
       },
       {
         "@type": "Question",
-        name: "How long does delivery take?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "Surface delivery usually takes 4 to 12 days depending on the region. Air delivery is available for urgent orders and usually takes 4 to 8 days depending on the location.",
-        },
-      },
-      {
-        "@type": "Question",
         name: "Can this product be customised?",
         acceptedAnswer: {
           "@type": "Answer",
@@ -772,48 +764,6 @@ export default async function ProductDetailPage({ params }: PageProps) {
                     contact our customer care to know the printing cost of the
                     card selected by you.
                   </p>
-                </Accordion>
-
-                <Accordion title="Shipping">
-                  <div className="space-y-5 text-base leading-relaxed text-ink-mid">
-                    <div>
-                      <h3 className="font-semibold text-carbon">1. Surface</h3>
-
-                      <p className="mt-2">
-                        Sent by courier through surface mode with door delivery.
-                        Delivery timelines vary by location.
-                      </p>
-
-                      <ul className="mt-3 space-y-1">
-                        <li>
-                          <span className="font-medium text-carbon">
-                            South India:
-                          </span>{" "}
-                          4 to 7 days
-                        </li>
-
-                        <li>
-                          <span className="font-medium text-carbon">
-                            North East and Himalayan region:
-                          </span>{" "}
-                          8 to 12 days
-                        </li>
-
-                        <li>
-                          <span className="font-medium text-carbon">
-                            Rest of India:
-                          </span>{" "}
-                          7 to 10 days
-                        </li>
-                      </ul>
-                    </div>
-
-                    <p>
-                      Shipping cost is based on weight. Just add products to
-                      your cart and use the Shipping calculator to see the
-                      shipping price and expected Time of Delivery.
-                    </p>
-                  </div>
                 </Accordion>
 
                 <Accordion title="Dimensions">

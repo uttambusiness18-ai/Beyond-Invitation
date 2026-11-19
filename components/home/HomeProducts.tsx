@@ -1,5 +1,6 @@
-import { fetchErpProductBySlug, fetchErpProductPage } from "@/lib/catalog";
+import { fetchErpProductsBySlugs, fetchErpProductPage } from "@/lib/catalog";
 import { fetchItemCategoryProductPage } from "@/lib/catalog-item-category";
+import { catalogueErrorMessage } from "@/lib/catalog-errors";
 import { PRODUCTS_PER_PAGE } from "@/lib/product-page";
 import { getSiteUrl } from "@/lib/site-config";
 import { ProductSection } from "@/components/ProductGrid";
@@ -70,36 +71,48 @@ export function HomeProductsSkeleton() {
   );
 }
 
+function CollectionUnavailable({ title }: { title: string }) {
+  return (
+    <section className="mx-auto max-w-[1800px] px-4 py-16 sm:px-6 lg:px-8">
+      <div role="status" className="rounded-3xl border border-gold/20 bg-white p-6 text-ink">
+        <h2 className="font-serif text-3xl">{title}</h2>
+        <p className="mt-3 text-base text-ink-mid">This collection is temporarily unavailable. Please try again shortly.</p>
+        {/* A document reload retries failed server reads on this same route. */}
+        {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+        <a href="/" className="mt-4 inline-block text-base font-semibold text-maroon underline underline-offset-4">Try again</a>
+      </div>
+    </section>
+  );
+}
+
 /** Sale uses a priced page; Trendy is curated; Premium features wedding boxes. */
 export default async function HomeProducts({ description }: { description: string }) {
-  let weddingBoxesPage;
-  let pricedPage;
-  let trendyProductResults;
-  try {
-    [weddingBoxesPage, pricedPage, trendyProductResults] = await Promise.all([
-      fetchItemCategoryProductPage("Wedding Box"),
-      fetchErpProductPage(0, true),
-      Promise.all(TRENDY_PRODUCT_SLUGS.map((slug) => fetchErpProductBySlug(slug))),
-    ]);
-  } catch (error) {
-    console.error("Catalogue product fetch failed on homepage:", error);
+  const results = await Promise.allSettled([
+    fetchItemCategoryProductPage("Wedding Box"),
+    fetchErpProductPage(0, true),
+    fetchErpProductsBySlugs(TRENDY_PRODUCT_SLUGS),
+  ]);
+  const labels = ["Premium Invitations", "Sale Collection", "Trendy Collection"];
+  results.forEach((result, index) => {
+    if (result.status === "rejected") {
+      console.warn(`Homepage ${labels[index]} unavailable:`, catalogueErrorMessage(result.reason));
+    }
+  });
+  const weddingBoxesPage = results[0].status === "fulfilled" ? results[0].value : null;
+  const pricedPage = results[1].status === "fulfilled" ? results[1].value : null;
+  const trendyProducts = results[2].status === "fulfilled" ? results[2].value : null;
+
+  if (!weddingBoxesPage && !pricedPage && !trendyProducts) {
     return (
       <>
-        <section className="mx-auto max-w-[1800px] px-4 py-16 sm:px-6 lg:px-8">
-          <div role="status" className="rounded-3xl border border-gold/20 bg-white p-6 text-ink">
-            <h2 className="font-serif text-3xl">Products could not be loaded</h2>
-            <p className="mt-3 text-base text-ink-mid">Please refresh the page or try again shortly.</p>
-          </div>
-        </section>
+        <CollectionUnavailable title="Products could not be loaded" />
         <FeatureStrip />
       </>
     );
   }
 
-  const { products, nextOffset } = weddingBoxesPage;
-  const trendyProducts = trendyProductResults.flatMap((product) => product ? [product] : []);
   const featuredProducts = Array.from(
-    new Map([...pricedPage.products, ...trendyProducts, ...products].map((product) => [product.slug, product])).values(),
+    new Map([...(pricedPage?.products ?? []), ...(trendyProducts ?? []), ...(weddingBoxesPage?.products ?? [])].map((product) => [product.slug, product])).values(),
   );
   const siteUrl = getSiteUrl();
   const productListJsonLd = {
@@ -131,25 +144,25 @@ export default async function HomeProducts({ description }: { description: strin
   return (
     <>
       {featuredProducts.length > 0 ? <JsonLd data={productListJsonLd} /> : null}
-      <SaleCollection products={pricedPage.products} nextOffset={pricedPage.nextOffset} />
-      <ProductSection
+      {pricedPage ? <SaleCollection products={pricedPage.products} nextOffset={pricedPage.nextOffset} /> : <CollectionUnavailable title="Sale Collection" />}
+      {trendyProducts ? <ProductSection
         label="Fresh from our catalogue"
         title="Trendy Collection"
         products={trendyProducts}
         nextOffset={null}
         viewAllHref="/catalog"
         viewAllText="View All Products"
-      />
+      /> : <CollectionUnavailable title="Trendy Collection" />}
       <FeatureStrip />
-      <ProductSection
+      {weddingBoxesPage ? <ProductSection
         label="Exclusive & elegant"
         title="Premium Invitations"
-        products={products}
-        nextOffset={nextOffset}
+        products={weddingBoxesPage.products}
+        nextOffset={weddingBoxesPage.nextOffset}
         collection="wedding-boxes"
         viewAllHref="/wedding-boxes"
         viewAllText="View All Wedding Boxes"
-      />
+      /> : <CollectionUnavailable title="Premium Invitations" />}
     </>
   );
 }

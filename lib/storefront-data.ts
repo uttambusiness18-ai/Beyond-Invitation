@@ -3,6 +3,7 @@ import "server-only";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import type { WebProductRow } from "@/lib/catalog";
 import { applyCatalogPrintNames } from "@/lib/catalog-titles";
+import { catalogueErrorMessage } from "@/lib/catalog-errors";
 
 export interface StorefrontRow extends WebProductRow {
   item_category: string;
@@ -62,12 +63,14 @@ function missingContract(
 
 /** null means the migration is not installed; [] is a valid empty result. */
 export async function readStorefrontRows(
-  options: { slug?: string; offset?: number; limit?: number } = {},
+  options: { slug?: string; slugs?: string[]; offset?: number; limit?: number } = {},
 ): Promise<StorefrontRow[] | null> {
+  if (options.slugs?.length === 0) return [];
   const resource = "v_storefront_products";
   if ((unavailableUntil.get(resource) ?? 0) > Date.now()) return null;
   let query = getSupabaseServerClient().from(resource).select("*");
   if (options.slug !== undefined) query = query.eq("slug", options.slug);
+  if (options.slugs !== undefined) query = query.in("slug", options.slugs);
   const offset = options.offset ?? 0;
   const { data, error } = await query
     .order("updated_at", { ascending: false })
@@ -76,7 +79,7 @@ export async function readStorefrontRows(
     .returns<StorefrontRow[]>();
   if (error) {
     if (missingContract(error, resource)) return null;
-    throw new Error(`Product catalogue unavailable: ${error.message}`);
+    throw new Error(`Product catalogue unavailable: ${catalogueErrorMessage(error)}`);
   }
   return applyCatalogPrintNames(data ?? []);
 }
@@ -90,7 +93,7 @@ export async function readStorefrontPage(
   const { data, error } = await getSupabaseServerClient().rpc(resource, query);
   if (error) {
     if (missingContract(error, resource)) return null;
-    throw new Error(`Product catalogue unavailable: ${error.message}`);
+    throw new Error(`Product catalogue unavailable: ${catalogueErrorMessage(error)}`);
   }
   if (
     !data ||

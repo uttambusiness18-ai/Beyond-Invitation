@@ -13,6 +13,7 @@ import type { Product } from "@/types";
 import { getProductQuantityRules } from "@/lib/product-quantity";
 
 import { useCart } from "./CartProvider";
+import ProductDeliveryCheck from "./ProductDeliveryCheck";
 
 type ProductBuyBoxProduct = Product & {
   itemCode?: string;
@@ -108,12 +109,17 @@ export default function ProductBuyBox({
 
   if (!Number.isFinite(product.price) || product.price <= 0) {
     return (
-      <Link
-        href={`/contact?product=${encodeURIComponent(product.slug)}`}
-        className="block rounded-full bg-carbon px-6 py-3 text-center text-base font-semibold text-paper transition hover:bg-gold hover:text-carbon"
-      >
-        Price on request
-      </Link>
+      <div>
+        <Link
+          href={`/contact?product=${encodeURIComponent(product.slug)}`}
+          className="block rounded-full bg-carbon px-6 py-3 text-center text-base font-semibold text-paper transition hover:bg-gold hover:text-carbon"
+        >
+          Price on request
+        </Link>
+        <p className="mt-3 text-sm leading-relaxed text-carbon/70">
+          Contact us with your pincode and quantity for pricing and an estimated delivery time.
+        </p>
+      </div>
     );
   }
 
@@ -167,6 +173,7 @@ export default function ProductBuyBox({
           Buy Now
         </button>
       </div>
+      <ProductDeliveryCheck key={product.slug} slug={product.slug} itemCode={product.itemCode} quantity={qty} />
     </div>
   );
 }

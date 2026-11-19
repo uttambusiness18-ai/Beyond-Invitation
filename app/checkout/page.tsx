@@ -9,8 +9,7 @@ import ProductPrice from "@/components/ProductPrice";
 import { formatProductName } from "@/lib/product-name";
 import { useRazorpayCheckout } from "@/components/useRazorpayCheckout";
 import { useShippingQuote } from "@/components/useShippingQuote";
-import DeliveryServiceSelector from "@/components/DeliveryServiceSelector";
-import { isValidIndianPincode } from "@/lib/shipping";
+import { formatDeliveryEstimate, isValidIndianPincode } from "@/lib/shipping";
 import { clearCheckoutDraft, paymentResultUrl, readCheckoutDraft, saveCheckoutDraft, savePaymentAttempt } from "@/lib/payment-attempt";
 
 type CheckoutForm = {
@@ -500,7 +499,6 @@ export default function CheckoutPage() {
               />
             </label>
           </div>
-          <DeliveryServiceSelector />
           </fieldset>
         </section>
 
@@ -569,6 +567,15 @@ export default function CheckoutPage() {
                 <span>Total</span>
                 <span className="shrink-0">{shipping.quote ? `₹${formatPrice(shipping.quote.totalPaise / 100)}` : "—"}</span>
               </div>
+              {shipping.quote && (
+                <div className="mt-4 rounded-2xl border border-gold/20 bg-gold-pale/40 p-4" role="status" aria-live="polite">
+                  <p className="text-sm font-semibold text-maroon">Estimated delivery</p>
+                  <p className="mt-1 text-base text-ink">
+                    {formatDeliveryEstimate(shipping.quote.estimatedDeliveryDays) || "Delivery estimate unavailable."}
+                  </p>
+                  <p className="mt-1 text-sm text-ink-mid">Preparation and personalisation time is additional.</p>
+                </div>
+              )}
             </div>
           </div>
 

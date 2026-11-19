@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useProductListHistory } from "@/components/useProductListHistory";
 import type { Product } from "@/types";
 import type { ProductPage } from "@/lib/product-page";
 import ProductCard from "./ProductCard";
@@ -62,17 +63,22 @@ export function ProductSection({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const requestRef = useRef<AbortController | null>(null);
+  const { listRef, restoreSnapshot } = useProductListHistory(
+    `home:${JSON.stringify([label, pricedOnly, collection, sale])}`,
+    { products: loadedProducts, nextOffset: offset },
+  );
 
-  useEffect(() => {
-    setLoadedProducts(products);
-    setOffset(nextOffset);
+  useLayoutEffect(() => {
+    const restored = restoreSnapshot();
+    setLoadedProducts(restored?.products ?? products);
+    setOffset(restored ? restored.nextOffset : nextOffset);
     setLoading(false);
     setError("");
     return () => {
       requestRef.current?.abort();
       requestRef.current = null;
     };
-  }, [products, nextOffset, pricedOnly, collection]);
+  }, [products, nextOffset, pricedOnly, collection, restoreSnapshot]);
 
   const displayedProducts = useMemo(() => {
     const visibleProducts = pricedOnly
@@ -142,7 +148,7 @@ export function ProductSection({
     <section
       className="bg-white py-14 md:py-20"
     >
-      <div className="mx-auto max-w-[1800px] px-4 sm:px-6 lg:px-8">
+      <div ref={listRef} className="mx-auto max-w-[1800px] px-4 sm:px-6 lg:px-8">
         <div className="mb-8 flex flex-col gap-4 md:mb-10 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="mb-2 text-sm font-semibold uppercase tracking-[0.1em] text-gold-ink">

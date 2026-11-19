@@ -5,7 +5,7 @@ import Link from "next/link";
 import ProductPrice from "@/components/ProductPrice";
 import { formatProductName } from "@/lib/product-name";
 import { useShippingQuote } from "@/components/useShippingQuote";
-import DeliveryServiceSelector from "@/components/DeliveryServiceSelector";
+import { formatDeliveryEstimate } from "@/lib/shipping";
 
 import {
   useCart,
@@ -281,11 +281,18 @@ export default function CartPage() {
                     ? shipping.error
                     : shipping.quote
                       ? `Shipping is available to ${deliveryPincode}. Your pincode will carry over to checkout.`
-                      : "Enter your pincode to see the shipping fee."}
+                      : "Enter your pincode to see the shipping fee and delivery estimate."}
             </p>
+            {shipping.quote && (
+              <div className="mt-3 border-t border-gold/20 pt-3" role="status" aria-live="polite">
+                <p className="text-sm font-semibold text-maroon">Estimated delivery</p>
+                <p className="mt-1 text-base text-ink">
+                  {formatDeliveryEstimate(shipping.quote.estimatedDeliveryDays) || "Delivery estimate unavailable."}
+                </p>
+                <p className="mt-1 text-sm text-ink-mid">Preparation and personalisation time is additional.</p>
+              </div>
+            )}
           </form>
-
-          <DeliveryServiceSelector />
 
           <div className="mt-5 space-y-3 text-base">
             <div className="flex min-w-0 justify-between gap-4">

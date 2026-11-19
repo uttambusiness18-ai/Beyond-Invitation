@@ -27,7 +27,7 @@ export default function ProductCard({
   const image = getProductCardImages(product.images)[0] || "";
 
   return (
-    <article className="product-card group grid h-full min-w-0 grid-cols-1 grid-rows-[auto_1fr_auto] sm:grid-rows-[auto_1fr]">
+    <article data-product-slug={product.slug} className="product-card group grid h-full min-w-0 grid-cols-1 grid-rows-[auto_1fr_auto] sm:grid-rows-[auto_1fr]">
       <ProductCardPhotos
         key={`${product.slug}:${image}`}
         product={product}
