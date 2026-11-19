@@ -321,17 +321,6 @@ export default function WeddingCardsBrowser({
 
   const facetControls = (
     <div className="space-y-6">
-      {!collectionType ? (
-        <Facet
-          label="Categories"
-          options={facets.types}
-          value={filters.type}
-          anyLabel="All"
-          anyValue="all"
-          total={facets.total}
-          onChange={(type) => update({ type: type as WeddingFilters["type"] })}
-        />
-      ) : null}
       {collectionType || facets.showPrice ? (
         <Facet
           label="Price per piece"
