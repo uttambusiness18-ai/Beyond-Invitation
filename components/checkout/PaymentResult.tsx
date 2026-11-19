@@ -11,6 +11,8 @@ import { usePrivateTrackingToken } from "@/components/usePrivateTrackingToken";
 import { privateTrackingLink } from "@/lib/order-tracking-link";
 import { readPaymentAttempt } from "@/lib/payment-attempt";
 import type { PaymentReceipt } from "@/lib/payment-receipt-types";
+import { trackPurchaseConversion } from "@/lib/google-tracking";
+import { COOKIE_CONSENT_EVENT } from "@/lib/cookie-consent";
 import { CONTACT } from "@/lib/site-config";
 import { formatProductName } from "@/lib/product-name";
 import { formatDeliveryEstimate } from "@/lib/shipping";
@@ -111,6 +113,22 @@ export default function PaymentResult({ outcome, orderId, paymentId }: Props) {
   const trackingHref = receipt && privateTrackingLink(receipt.id, token);
   const paymentReference = receipt?.paymentId || attempt?.paymentId || reference;
   const itemCount = receipt?.items.reduce((sum, item) => sum + item.quantity, 0) || 0;
+
+  useEffect(() => {
+    if (!receipt || receipt.id !== validOrderId || receipt.paymentStatus !== "paid" || receipt.testMode) return;
+    const purchase: Pick<PaymentReceipt, "id" | "paymentStatus" | "testMode" | "amountPaise" | "currency"> = {
+      id: receipt.id,
+      paymentStatus: receipt.paymentStatus,
+      testMode: receipt.testMode,
+      amountPaise: receipt.amountPaise,
+      currency: receipt.currency,
+    };
+    const track = () => { trackPurchaseConversion(purchase); };
+    track();
+    // A customer may accept measurement after their payment has been confirmed.
+    window.addEventListener(COOKIE_CONSENT_EVENT, track);
+    return () => window.removeEventListener(COOKIE_CONSENT_EVENT, track);
+  }, [receipt, validOrderId]);
 
   useEffect(() => {
     if (state !== "pending" || loading || error || pollCount.current >= 5) return;

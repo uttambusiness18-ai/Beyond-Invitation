@@ -1,83 +1,58 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-
-const COOKIE_NAME = "beyond_invitation_cookie_consent";
-const COOKIE_VALUE = "accepted";
-const COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
-
-function getCookie(name: string): string | null {
-  if (typeof document === "undefined") {
-    return null;
-  }
-
-  const encodedName = `${encodeURIComponent(name)}=`;
-
-  const cookie = document.cookie
-    .split("; ")
-    .find((item) => item.startsWith(encodedName));
-
-  if (!cookie) {
-    return null;
-  }
-
-  return decodeURIComponent(cookie.slice(encodedName.length));
-}
-
-function saveConsentCookie() {
-  const secure =
-    window.location.protocol === "https:" ? "; Secure" : "";
-
-  document.cookie = [
-    `${encodeURIComponent(COOKIE_NAME)}=${encodeURIComponent(
-      COOKIE_VALUE,
-    )}`,
-    `Max-Age=${COOKIE_MAX_AGE}`,
-    "Path=/",
-    "SameSite=Lax",
-  ].join("; ") + secure;
-}
+import { useEffect, useRef, useState } from "react";
+import {
+  COOKIE_PREFERENCES_EVENT, getCookieConsent, hasMarketingConsent,
+  saveCookieConsent, type CookieConsent as ConsentChoice,
+} from "@/lib/cookie-consent";
 
 export function hasCookieConsent(): boolean {
-  return getCookie(COOKIE_NAME) === COOKIE_VALUE;
+  return hasMarketingConsent();
+}
+
+export function CookiePreferencesButton() {
+  return (
+    <button
+      type="button"
+      onClick={() => window.dispatchEvent(new window.Event(COOKIE_PREFERENCES_EVENT))}
+      className="group inline-flex items-center gap-3 text-base leading-relaxed text-white/90 transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4"
+    >
+      <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#d6b36a]/60 transition-all group-hover:w-4 group-hover:rounded-full group-hover:bg-[#d6b36a]" />
+      Cookie preferences
+    </button>
+  );
 }
 
 export default function CookieConsent() {
   const [shouldRender, setShouldRender] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const closeTimer = useRef<number | null>(null);
 
   useEffect(() => {
-    if (hasCookieConsent()) {
-      return;
+    let animationFrame: number | null = null;
+    function open() {
+      if (closeTimer.current !== null) window.clearTimeout(closeTimer.current);
+      if (animationFrame !== null) window.cancelAnimationFrame(animationFrame);
+      setShouldRender(true);
+      animationFrame = window.requestAnimationFrame(() => setIsOpen(true));
     }
-
-    setShouldRender(true);
-
-    const animationFrame = window.requestAnimationFrame(() => {
-      setIsOpen(true);
-    });
-
+    if (getCookieConsent() === null) open();
+    window.addEventListener(COOKIE_PREFERENCES_EVENT, open);
     return () => {
-      window.cancelAnimationFrame(animationFrame);
+      if (animationFrame !== null) window.cancelAnimationFrame(animationFrame);
+      if (closeTimer.current !== null) window.clearTimeout(closeTimer.current);
+      window.removeEventListener(COOKIE_PREFERENCES_EVENT, open);
     };
   }, []);
 
-  function handleAccept() {
-    saveConsentCookie();
-
-    window.dispatchEvent(
-      new CustomEvent("cookie-consent-change", {
-        detail: {
-          status: "accepted",
-        },
-      }),
-    );
-
+  function handleChoice(choice: ConsentChoice) {
+    saveCookieConsent(choice);
     setIsOpen(false);
-
-    window.setTimeout(() => {
+    if (closeTimer.current !== null) window.clearTimeout(closeTimer.current);
+    closeTimer.current = window.setTimeout(() => {
       setShouldRender(false);
+      closeTimer.current = null;
     }, 300);
   }
 
@@ -166,27 +141,36 @@ export default function CookieConsent() {
                 id="cookie-consent-description"
                 className="mt-1.5 text-base leading-relaxed text-ink-mid"
               >
-                We use cookies and similar storage to keep sign-in, your cart,
-                wishlist and checkout reliable, and to remember your
-                preferences.
+                Essential cookies keep sign-in, your cart, wishlist and checkout
+                working. With your permission, Google cookies also help us
+                understand visits and measure purchases from our ads. You can
+                change your choice in Cookie preferences below.
               </p>
             </div>
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-carbon/[0.07] pt-3">
+          <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-carbon/[0.07] pt-3">
             <Link
               href="/privacy-policy"
-              className="text-base font-semibold text-carbon underline decoration-carbon/40 underline-offset-4 transition hover:text-carbon-dark"
+              className="w-full text-base font-semibold text-carbon underline decoration-carbon/40 underline-offset-4 transition hover:text-carbon-dark"
             >
               Privacy details
             </Link>
 
             <button
               type="button"
-              onClick={handleAccept}
+              onClick={() => handleChoice("declined")}
+              className="inline-flex min-h-11 items-center justify-center rounded-full border border-carbon px-4 py-2 text-base font-bold text-carbon transition hover:bg-paper focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+            >
+              Essential only
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleChoice("accepted")}
               className="group inline-flex min-h-11 items-center gap-2 rounded-full bg-carbon px-4 py-2 text-base font-bold text-white shadow-[0_6px_18px_rgba(123,28,46,0.18)] transition hover:-translate-y-0.5 hover:bg-carbon-dark hover:shadow-[0_9px_24px_rgba(123,28,46,0.24)] focus:outline-none focus-visible:ring-2 focus-visible:ring-carbon focus-visible:ring-offset-2 active:translate-y-0"
             >
-              <span>Accept & continue</span>
+              <span>Accept all</span>
 
               {/* Wax-seal style confirmation */}
               <span className="flex h-5 w-5 items-center justify-center rounded-full border border-white/30 bg-white/10 transition group-hover:rotate-6">

@@ -1,5 +1,6 @@
 import Link from "@/components/NavigationLink";
 import { BRAND, TAGLINE } from "./siteConfig";
+import { CookiePreferencesButton } from "./CookiesConsent";
 
 const footerColumns = [
   {
@@ -135,6 +136,7 @@ export default function Footer() {
                     </Link>
                   </li>
                 ))}
+                {col.heading === "More" && <li><CookiePreferencesButton /></li>}
               </ul>
             </div>
           ))}

@@ -568,6 +568,56 @@ The integration creates an ERPNext Lead containing customer enquiry information.
 
 ---
 
+# Google Ads purchase tracking
+
+The storefront loads Google container `GTM-PM7X2BZK`, which is connected to
+`AW-18574685891`. The purchase conversion destination is
+`AW-18574685891/4scPCKSbrrsdEMPtjJlF`. Configuration is in `lib/google-tracking.ts`;
+no extra environment variables or second Google loader are required.
+
+Purchase measurement runs on the checkout result after `/api/orders/receipt`
+returns the matching, authorized order with `paymentStatus: "paid"` and
+`testMode: false`. The conversion sends the stored order total (including shipping)
+in INR and the order UUID as `transaction_id`. Pending payments can convert after
+their receipt updates to paid. The success URL or Razorpay callback alone cannot
+trigger a conversion. Enquiry submissions are not tracked as conversions.
+
+The cookie banner offers optional measurement or essential cookies only. The
+Google script waits for acceptance; an earlier version's essential-cookie
+acceptance is not treated as advertising consent. Visitors can change their choice
+using **Cookie preferences** in the footer. Consent Mode keeps advertising user
+data and personalisation denied; enhanced conversions and remarketing are not part
+of this integration. The custom purchase event contains no customer name, email,
+phone, address, or notes. Tracking URLs exclude private order capabilities and
+query fields, retaining only standard advertising attribution parameters.
+
+The browser queues each order once and remembers processed conversions for the
+tab session. The stable transaction ID also lets Google deduplicate repeat visits
+when browser storage is unavailable. Browser blocking, declined consent, or leaving
+before a payment is confirmed can prevent client-side measurement; this is not a
+server-to-server conversion integration.
+
+Verification:
+
+- `node --test tests/google-tracking.test.cjs tests/cookie-consent.test.cjs tests/payment-result-ui.test.cjs`
+- `node scripts/check-google-tag.cjs` checks the currently published Google runtime
+  with all measurement requests intercepted, so it cannot send a test conversion.
+- After deployment, connect Google Tag Assistant to the live checkout. Accept
+  optional cookies and complete a genuine live purchase. Confirm one conversion
+  with label `4scPCKSbrrsdEMPtjJlF`, the actual INR total, and the order UUID.
+  Test-mode payments intentionally do not fire the production conversion.
+- In Google Ads, keep this action in the **Purchase** category and use transaction
+  values and **Every** counting. The existing automatic `/wedding-cards` page-view
+  action is configured remotely in Google, not by this code. To optimize campaigns
+  for purchases only, exclude that page-view action from bidding goals or mark it
+  Secondary. Do not add another GTM purchase trigger for the same destination.
+
+References: [Google's conversion setup](https://support.google.com/google-ads/answer/16560108),
+[transaction IDs](https://support.google.com/google-ads/answer/6386790), and
+[Consent Mode](https://developers.google.com/tag-platform/security/concepts/consent-mode).
+
+---
+
 # Instagram Integration
 
 Instagram reel support uses the Instagram Graph API.

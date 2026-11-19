@@ -73,6 +73,8 @@ async function mount(responses, props = {}, options = {}) {
     modules.set(filename, module.exports);
     return module.exports;
   }
+  const consent = load(path.join(projectRoot, "lib/cookie-consent.ts"));
+  if (options.consent) consent.saveCookieConsent(options.consent);
   const Component = load(path.join(projectRoot, "components/checkout/PaymentResult.tsx")).default;
   const root = createRoot(dom.window.document.getElementById("root"));
   await act(async () => root.render(React.createElement(Component, { outcome: "success", orderId, ...props })));
@@ -81,6 +83,22 @@ async function mount(responses, props = {}, options = {}) {
     document, calls, copied, storage: dom.window.sessionStorage,
     get state() { return document.querySelector("[data-payment-state]").dataset.paymentState; },
     get prints() { return prints; },
+    get conversions() {
+      return Array.from(dom.window.dataLayer || [])
+        .filter(entry => entry[0] === "event" && entry[1] === "conversion")
+        .map(entry => JSON.parse(JSON.stringify(entry[2])));
+    },
+    acknowledgeConversions() {
+      for (const entry of dom.window.dataLayer || []) {
+        if (entry[0] === "event" && entry[1] === "conversion") entry[2].event_callback?.();
+      }
+    },
+    async setConsent(choice) {
+      await act(async () => consent.saveCookieConsent(choice));
+    },
+    async rerender() {
+      await act(async () => root.render(React.createElement(Component, { outcome: "success", orderId, ...props })));
+    },
     async click(selector) {
       const element = document.querySelector(selector);
       assert.ok(element, `Missing element: ${selector}`);
@@ -247,4 +265,91 @@ test("a failed pending refresh keeps the prior receipt and labels it as the last
     assert.equal(view.document.querySelector('a[href="/checkout"]'), null);
     assert.equal(view.calls.length, 2);
   } finally { await view.close(); }
+});
+
+test("only a live, server-confirmed payment queues the purchase conversion with the actual order total", async () => {
+  const view = await mount([response(fixture())], { paymentId: "pay_url_untrusted" }, { consent: "accepted" });
+  try {
+    assert.equal(view.conversions.length, 1);
+    const conversion = view.conversions[0];
+    assert.equal(conversion.send_to, "AW-18574685891/4scPCKSbrrsdEMPtjJlF");
+    assert.equal(conversion.transaction_id, orderId);
+    assert.equal(conversion.value, 1250);
+    assert.equal(conversion.currency, "INR");
+    const payload = JSON.stringify(conversion);
+    for (const privateValue of [token, receiptToken, "Ananya Sen", "ananya@example.test", "+919999999999", "Garden Road", "confirm the names", "pay_url_untrusted"]) {
+      assert.ok(!payload.includes(privateValue), `Conversion must exclude ${privateValue}`);
+    }
+    await view.rerender();
+    await view.setConsent("accepted");
+    assert.equal(view.conversions.length, 1, "Rerenders and repeated consent must not duplicate the purchase");
+  } finally { await view.close(); }
+});
+
+test("pending payment converts only after the receipt becomes paid, including on a failed result route", async () => {
+  for (const outcome of ["success", "failed"]) {
+    const view = await mount([
+      response(fixture({ paymentStatus: "pending", paidAt: null, paymentId: null })),
+      response(fixture()),
+    ], { outcome }, { consent: "accepted" });
+    try {
+      assert.equal(view.state, "pending");
+      assert.equal(view.conversions.length, 0);
+      await view.clickButton("Check payment status");
+      assert.equal(view.state, "success");
+      assert.equal(view.conversions.length, 1);
+      assert.equal(view.conversions[0].transaction_id, orderId);
+    } finally { await view.close(); }
+  }
+});
+
+test("test payments, unavailable receipts and a mismatched order never queue a purchase", async () => {
+  const cases = [
+    response(fixture({ testMode: true })),
+    { status: 401, body: { error: "Unauthorized" } },
+    { status: 404, body: { error: "Not found" } },
+    { status: 503, body: { error: "Unavailable" } },
+    response(fixture({ id: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee" })),
+  ];
+  for (const next of cases) {
+    const view = await mount([next], {}, { consent: "accepted" });
+    try {
+      assert.equal(view.conversions.length, 0);
+      await view.setConsent("accepted");
+      assert.equal(view.conversions.length, 0);
+    } finally { await view.close(); }
+  }
+});
+
+test("a confirmed purchase waits for marketing consent and queues once when the customer accepts", async () => {
+  const view = await mount([response(fixture())]);
+  try {
+    assert.equal(view.state, "success");
+    assert.equal(view.conversions.length, 0);
+    await view.setConsent("declined");
+    assert.equal(view.conversions.length, 0);
+    await view.setConsent("accepted");
+    assert.equal(view.conversions.length, 1);
+    await view.setConsent("accepted");
+    await view.rerender();
+    assert.equal(view.conversions.length, 1);
+  } finally { await view.close(); }
+});
+
+test("reopening a paid receipt after Google processes its conversion does not queue it again", async () => {
+  let storage;
+  const first = await mount([response(fixture())], {}, { consent: "accepted" });
+  try {
+    assert.equal(first.conversions.length, 1);
+    first.acknowledgeConversions();
+    storage = Object.fromEntries(Array.from({ length: first.storage.length }, (_, index) => {
+      const key = first.storage.key(index);
+      return [key, first.storage.getItem(key)];
+    }));
+  } finally { await first.close(); }
+  const reopened = await mount([response(fixture())], {}, { consent: "accepted", storage });
+  try {
+    assert.equal(reopened.state, "success");
+    assert.equal(reopened.conversions.length, 0);
+  } finally { await reopened.close(); }
 });

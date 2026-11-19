@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     "Read the Privacy Policy of Beyond Invitation, covering how we collect, use, store and protect customer information, order details, payment information, cookies and communication data.",
 };
 
-const lastUpdated = "11 November 2026";
+const lastUpdated = "19 November 2026";
 
 const sections = [
   {
@@ -59,6 +59,8 @@ const sections = [
     body: [
       `Our website may use cookies, local storage, session storage, pixels, tags and similar technologies to provide essential website functions, remember cart and wishlist items, maintain sign-in sessions, improve performance, understand visitor behavior and measure marketing effectiveness.`,
       `Some cookies are necessary for the website to function properly. Others may be used for analytics, preferences and marketing.`,
+      `If you accept optional cookies, we use Google Tag Manager and Google Ads to understand website visits and measure completed purchases from our advertising. Our purchase conversion event includes a unique order reference, the order value and currency. We do not include your name, email, telephone number, address or order notes in that event.`,
+      `You can choose Essential only to decline optional tracking, or use Cookie preferences in the website footer to change your choice at any time. Essential shopping, sign-in and payment functions remain available whichever option you choose.`,
       `You can control or disable cookies through your browser settings. However, disabling cookies may affect features such as sign-in, cart, wishlist, checkout, product recommendations and personalized browsing.`,
     ],
   },
