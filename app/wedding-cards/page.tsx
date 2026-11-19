@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import JsonLd from "@/components/seo/JsonLd";
 import WeddingCardsCollection from "@/components/wedding-cards/WeddingCardsCollection";
 import { fetchWeddingProductPage } from "@/lib/catalog-browse";
+import { COLLECTION_PAGE_SIZE } from "@/lib/catalog-browse-options";
+import { parsePageNumber } from "@/lib/pagination";
 import { facetCounts, weddingFiltersFromSearchParams, WEDDING_FAQS, type WeddingProductPage, type WeddingSearchParams } from "@/lib/wedding-cards";
 import {
   BUSINESS_ADDRESS,
@@ -63,11 +65,13 @@ export const metadata: Metadata = {
 };
 
 export default async function WeddingCardsPage({ searchParams }: { searchParams: Promise<WeddingSearchParams> }) {
-  const initialFilters = weddingFiltersFromSearchParams(await searchParams);
+  const params = await searchParams;
+  const initialFilters = weddingFiltersFromSearchParams(params);
+  const pageNumber = parsePageNumber(params.page, COLLECTION_PAGE_SIZE);
   let initialPage: WeddingProductPage = { products: [], nextOffset: null, total: 0, facets: facetCounts([]) };
   let errorMessage = "";
   try {
-    initialPage = await fetchWeddingProductPage({ filters: initialFilters });
+    initialPage = await fetchWeddingProductPage({ filters: initialFilters, offset: (pageNumber - 1) * COLLECTION_PAGE_SIZE });
   } catch (error) {
     console.error("Wedding cards page Catalogue fetch failed:", error);
     errorMessage = "Unable to load wedding cards.";
@@ -117,7 +121,7 @@ export default async function WeddingCardsPage({ searchParams }: { searchParams:
     name: "Wedding cards by Beyond Invitation",
     itemListElement: initialPage.products.map((product, index) => ({
       "@type": "ListItem",
-      position: index + 1,
+      position: ((initialPage.pageNumber ?? pageNumber) - 1) * COLLECTION_PAGE_SIZE + index + 1,
       url: siteUrl(`/products/${product.slug}`),
       item: {
         "@type": "Product",

@@ -42,7 +42,7 @@ export default function CategoryCollectionPageClient({
 
         const ctx = gsap.context(() => {
           const introItems = root.querySelectorAll("[data-page-intro]");
-          // Products remain visible immediately, including newly appended pages.
+          // Products remain visible immediately, including newly selected pages.
           gsap.fromTo(introItems, { y: 10 }, {
             y: 0,
             duration: 0.3,

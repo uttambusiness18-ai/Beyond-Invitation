@@ -1,12 +1,13 @@
 "use client";
 
 import ProductCard from "@/components/ProductCard";
+import ProductPagination from "@/components/ProductPagination";
 import { useCatalogPagination } from "@/components/useCatalogPagination";
 import type { CatalogBrowsePage, CatalogScope } from "@/lib/catalog-browse-options";
 
 type Pagination = ReturnType<typeof useCatalogPagination>;
 
-export function CatalogPaginationControls({ page, loading, error, loadMore, retry }: Pick<Pagination, "page" | "loading" | "error" | "loadMore" | "retry">) {
+export function CatalogPaginationControls({ currentPage, totalPages, loading, error, goToPage, retry }: Pick<Pagination, "currentPage" | "totalPages" | "loading" | "error" | "goToPage" | "retry">) {
   return (
     <div className="space-y-3 pt-4 text-center">
       {error && (
@@ -17,16 +18,7 @@ export function CatalogPaginationControls({ page, loading, error, loadMore, retr
           </button>
         </div>
       )}
-      {page.nextOffset !== null && !error && (
-        <button
-          type="button"
-          onClick={loadMore}
-          disabled={Boolean(loading)}
-          className="rounded-full border border-maroon bg-maroon px-8 py-3 text-base font-semibold text-gold-light shadow-sm transition hover:bg-maroon-dark focus:outline-none focus:ring-2 focus:ring-gold focus:ring-offset-2 disabled:cursor-wait disabled:opacity-60"
-        >
-          {loading ? "Loading…" : "Load More"}
-        </button>
-      )}
+      <ProductPagination currentPage={currentPage} totalPages={totalPages} onPageChange={goToPage} disabled={Boolean(loading)} />
     </div>
   );
 }
@@ -39,9 +31,9 @@ export default function PaginatedProductGrid({ initialPage, scope = {}, category
 }) {
   const pagination = useCatalogPagination(initialPage, scope);
   return (
-    <div ref={pagination.listRef} aria-busy={Boolean(pagination.loading)}>
+    <div ref={pagination.listRef} tabIndex={-1} className="scroll-mt-28 outline-none" aria-busy={Boolean(pagination.loading)}>
       <p className="mb-5 text-base text-ink-mid" aria-live="polite">
-        Showing {pagination.page.products.length} of {pagination.page.total} {pagination.page.total === 1 ? "product" : "products"}
+        {pagination.loading ? "Loading products…" : <>Showing {pagination.rangeStart === pagination.rangeEnd ? pagination.rangeEnd : `${pagination.rangeStart}–${pagination.rangeEnd}`} of {pagination.page.total} {pagination.page.total === 1 ? "product" : "products"}</>}
       </p>
       <div className={gridClassName}>
         {pagination.page.products.map((product) => (

@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import ProductCard from "@/components/ProductCard";
-import type { CatalogBrowsePage } from "@/lib/catalog-browse-options";
+import ProductPagination from "@/components/ProductPagination";
+import { COLLECTION_PAGE_SIZE, type CatalogBrowsePage } from "@/lib/catalog-browse-options";
 import type { CatalogueRange } from "@/lib/catalogue-ranges";
 
 const gridClass = "grid grid-cols-2 gap-x-3 gap-y-8 sm:grid-cols-3 sm:gap-x-5 lg:grid-cols-4";
@@ -17,10 +18,13 @@ export default function CatalogueModal({ range, onClose }: {
   const id = useId();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
+  const resultsRef = useRef<HTMLDivElement>(null);
   const backdropPressed = useRef(false);
   const requestRef = useRef<AbortController | null>(null);
-  const failedOffset = useRef(0);
+  const failedPage = useRef({ pageNumber: 1, scroll: false });
+  const shouldScrollRef = useRef(false);
   const [page, setPage] = useState<CatalogBrowsePage | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -48,11 +52,13 @@ export default function CatalogueModal({ range, onClose }: {
     };
   }, []);
 
-  const loadPage = useCallback(async (offset: number) => {
+  const loadPage = useCallback(async function loadPage(pageNumber: number, scroll = false): Promise<void> {
     if (requestRef.current) return;
+    if (!Number.isSafeInteger(pageNumber) || pageNumber < 1) return;
+    const offset = (pageNumber - 1) * COLLECTION_PAGE_SIZE;
     const controller = new AbortController();
     requestRef.current = controller;
-    failedOffset.current = offset;
+    failedPage.current = { pageNumber, scroll };
     setLoading(true);
     setError("");
     try {
@@ -70,17 +76,16 @@ export default function CatalogueModal({ range, onClose }: {
         !Number.isSafeInteger(result.total) || result.total < 0 ||
         !(result.nextOffset === null || (Number.isSafeInteger(result.nextOffset) && result.nextOffset > offset))
       ) throw new Error("Invalid catalogue page");
-      setPage((current) => {
-        const products = offset > 0 && current ? [...current.products] : [];
-        const seen = new Set(products.map((product) => product.slug));
-        for (const product of result.products) {
-          if (!seen.has(product.slug)) {
-            products.push(product);
-            seen.add(product.slug);
-          }
-        }
-        return { ...result, products };
-      });
+      const lastPage = Math.max(1, Math.ceil(result.total / COLLECTION_PAGE_SIZE));
+      if (pageNumber > lastPage) {
+        requestRef.current = null;
+        void loadPage(lastPage, scroll);
+        return;
+      }
+      const products = [...new Map(result.products.map((product) => [product.slug, product])).values()];
+      shouldScrollRef.current = scroll;
+      setPage({ ...result, products });
+      setCurrentPage(pageNumber);
     } catch {
       if (!controller.signal.aborted && requestRef.current === controller) {
         setError("We couldn't load these wedding cards. Please try again.");
@@ -94,12 +99,26 @@ export default function CatalogueModal({ range, onClose }: {
   }, [range.id]);
 
   useEffect(() => {
-    void loadPage(0);
+    setPage(null);
+    setCurrentPage(1);
+    shouldScrollRef.current = false;
+    void loadPage(1);
     return () => {
       requestRef.current?.abort();
       requestRef.current = null;
     };
   }, [loadPage]);
+
+  useLayoutEffect(() => {
+    if (!shouldScrollRef.current) return;
+    shouldScrollRef.current = false;
+    resultsRef.current?.scrollTo({ top: 0, behavior: "instant" });
+    resultsRef.current?.focus({ preventScroll: true });
+  }, [page, currentPage]);
+
+  const totalPages = Math.max(1, Math.ceil((page?.total ?? 0) / COLLECTION_PAGE_SIZE));
+  const rangeStart = page?.products.length ? (currentPage - 1) * COLLECTION_PAGE_SIZE + 1 : 0;
+  const rangeEnd = page?.products.length ? Math.min(page.total, rangeStart + page.products.length - 1) : 0;
 
   function isOutsideDialog(clientX: number, clientY: number) {
     const bounds = dialogRef.current?.getBoundingClientRect();
@@ -133,9 +152,9 @@ export default function CatalogueModal({ range, onClose }: {
           </button>
         </header>
 
-        <div className="min-h-0 overflow-y-auto overscroll-contain px-5 py-6 sm:px-8 sm:py-8" aria-busy={loading}>
+        <div ref={resultsRef} tabIndex={-1} className="min-h-0 overflow-y-auto overscroll-contain px-5 py-6 outline-none sm:px-8 sm:py-8" aria-busy={loading}>
           <p role="status" className={page ? "mb-5 text-base text-ink-mid" : "sr-only"}>
-            {loading ? (page ? "Loading more wedding cards…" : "Loading wedding cards…") : page ? `${page.products.length} of ${page.total} designs` : ""}
+            {loading ? "Loading wedding cards…" : page ? `Showing ${rangeStart === rangeEnd ? rangeEnd : `${rangeStart}–${rangeEnd}`} of ${page.total} designs` : ""}
           </p>
 
           {!page && loading && (
@@ -169,15 +188,13 @@ export default function CatalogueModal({ range, onClose }: {
           {error && (
             <div className="mt-6 rounded-xl border border-maroon/20 bg-paper/50 p-5 text-center">
               <p role="alert" className="text-base text-maroon">{error}</p>
-              <button type="button" onClick={() => void loadPage(failedOffset.current)} disabled={loading} className={`mt-4 ${buttonClass}`}>Try again</button>
+              <button type="button" onClick={() => void loadPage(failedPage.current.pageNumber, failedPage.current.scroll)} disabled={loading} className={`mt-4 ${buttonClass}`}>Try again</button>
             </div>
           )}
 
-          {page && page.nextOffset !== null && !error && (
+          {page && (
             <div className="mt-8 text-center">
-              <button type="button" onClick={() => void loadPage(page.nextOffset!)} disabled={loading} className={buttonClass}>
-                {loading ? "Loading…" : "Load more wedding cards"}
-              </button>
+              <ProductPagination currentPage={currentPage} totalPages={totalPages} onPageChange={(nextPage) => void loadPage(nextPage, true)} disabled={loading} label={`${range.title} catalogue pages`} />
             </div>
           )}
         </div>

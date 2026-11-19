@@ -265,6 +265,7 @@ const readCatalogProductPage = unstable_cache(
   ): Promise<{
     products: CatalogProduct[];
     nextOffset: number | null;
+    total: number;
   }> => {
     const optimized = await readStorefrontPage({
       p_offset: offset,
@@ -275,6 +276,7 @@ const readCatalogProductPage = unstable_cache(
       return {
         products: optimized.products.map(mapCatalogRowToProduct),
         nextOffset: optimized.nextOffset,
+        total: optimized.total,
       };
     if (pricedOnly) {
       const products = (await readCatalogProducts()).filter(
@@ -284,33 +286,36 @@ const readCatalogProductPage = unstable_cache(
       return {
         products: products.slice(offset, end),
         nextOffset: end < products.length ? end : null,
+        total: products.length,
       };
     }
-    // An extra source row detects the next unfiltered page without resolving
-    // the full catalogue. The sentinel is not sent to the browser.
-    const { data, error } = await getSupabaseServerClient()
+    // Get an exact count alongside this page without loading the full catalogue.
+    const { data, error, count } = await getSupabaseServerClient()
       .from("v_web_products")
-      .select("*")
+      .select("*", { count: "exact" })
       .order("updated_at", { ascending: false })
       .order("id", { ascending: true })
-      .range(offset, offset + PRODUCTS_PER_PAGE)
+      .range(offset, offset + PRODUCTS_PER_PAGE - 1)
       .returns<WebProductRow[]>();
 
     if (error)
       throw new Error(`Product catalogue unavailable: ${error.message}`);
+    if (typeof count !== "number" || !Number.isSafeInteger(count) || count < 0)
+      throw new Error("Product catalogue returned an invalid product count.");
 
     const rows = data ?? [];
     return {
       products: rows.length
-        ? await resolveCatalogProducts(rows.slice(0, PRODUCTS_PER_PAGE))
+        ? await resolveCatalogProducts(rows)
         : [],
       // Advance by source rows, even if an item was unpublished during
       // enrichment. Advancing by the surviving count would repeat products.
       nextOffset:
-        rows.length > PRODUCTS_PER_PAGE ? offset + PRODUCTS_PER_PAGE : null,
+        offset + PRODUCTS_PER_PAGE < count ? offset + PRODUCTS_PER_PAGE : null,
+      total: count,
     };
   },
-  ["catalogProductPage-v4-priced-only", String(PRODUCTS_PER_PAGE)],
+  ["catalogProductPage-v5-total", String(PRODUCTS_PER_PAGE)],
   { revalidate: 60, tags: ["catalogue"] },
 );
 
@@ -337,6 +342,7 @@ export async function fetchErpProductPage(
 ): Promise<{
   products: CatalogProduct[];
   nextOffset: number | null;
+  total: number;
 }> {
   if (
     !Number.isSafeInteger(offset) ||
@@ -349,6 +355,7 @@ export async function fetchErpProductPage(
   return {
     products: await applyResellerPricingToProducts(page.products),
     nextOffset: page.nextOffset,
+    total: page.total,
   };
 }
 

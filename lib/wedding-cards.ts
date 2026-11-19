@@ -42,19 +42,55 @@ export const DEFAULT_WEDDING_FILTERS: WeddingFilters = {
   sort: "recommended",
 };
 export const CARD_TYPES = [
-  { value: "hindu", label: "Hindu Wedding Card", itemCategory: "Hindu Wedding Card", href: "/collections/wedding-card-hindu" },
-  { value: "muslim", label: "Muslim Wedding Card", itemCategory: "Wedding Card", href: "/collections/wedding-card-muslim" },
-  { value: "christian", label: "Christian Wedding Card", itemCategory: "Wedding Card", href: "/collections/wedding-card-christian" },
+  {
+    value: "hindu",
+    label: "Hindu Wedding Card",
+    itemCategory: "Hindu Wedding Card",
+    href: "/collections/wedding-card-hindu",
+  },
+  {
+    value: "muslim",
+    label: "Muslim Wedding Card",
+    itemCategory: "Wedding Card",
+    href: "/collections/wedding-card-muslim",
+  },
+  {
+    value: "christian",
+    label: "Christian Wedding Card",
+    itemCategory: "Wedding Card",
+    href: "/collections/wedding-card-christian",
+  },
 ] as const;
 export const WEDDING_CARD_CATEGORIES = [
-  { value: "hindu", label: "Hindu Wedding Card", subjects: ["hindu wedding card", "common"], requiresPrice: true },
-  { value: "muslim", label: "Muslim Wedding Card", subjects: ["muslim wedding card", "common"], requiresPrice: false },
-  { value: "christian", label: "Christian Wedding Card", subjects: ["christian wedding card", "common"], requiresPrice: false },
-  { value: "bengali", label: "Bengali Wedding Card", subjects: ["bengali"], requiresPrice: false },
+  {
+    value: "hindu",
+    label: "Hindu Wedding Card",
+    subjects: ["hindu wedding card", "common"],
+    requiresPrice: true,
+  },
+  {
+    value: "muslim",
+    label: "Muslim Wedding Card",
+    subjects: ["muslim wedding card", "common"],
+    requiresPrice: false,
+  },
+  {
+    value: "christian",
+    label: "Christian Wedding Card",
+    subjects: ["christian wedding card", "common"],
+    requiresPrice: false,
+  },
+  {
+    value: "bengali",
+    label: "Bengali Wedding Card",
+    subjects: ["bengali"],
+    requiresPrice: false,
+  },
 ] as const;
 export type WeddingCardType = (typeof WEDDING_CARD_CATEGORIES)[number]["value"];
 export type WeddingCollectionType = WeddingCardType | "boxes";
 export type WeddingProductPage = {
+  pageNumber?: number;
   products: BrowserProduct[];
   nextOffset: number | null;
   total: number;
@@ -106,7 +142,8 @@ export function normalizeWeddingCollectionFilters(
     ...filters,
     type: collectionType ? "all" : filters.type,
     price:
-      (collectionType ?? filters.type) === "hindu" && filters.price === "on-request"
+      (collectionType ?? filters.type) === "hindu" &&
+      filters.price === "on-request"
         ? "any"
         : filters.price,
   };
@@ -131,7 +168,9 @@ export function matchesWeddingCardCategory(
 ) {
   const category = WEDDING_CARD_CATEGORIES.find((item) => item.value === type)!;
   return (
-    (category.subjects as readonly string[]).includes(product.subject.trim().toLowerCase()) &&
+    (category.subjects as readonly string[]).includes(
+      product.subject.trim().toLowerCase(),
+    ) &&
     (!category.requiresPrice || hasPrice(product.price))
   );
 }
@@ -142,7 +181,8 @@ export function applyWeddingFilters(
 ) {
   return products.filter((product) => {
     return (
-      (filters.type === "all" || matchesWeddingCardCategory(product, filters.type)) &&
+      (filters.type === "all" ||
+        matchesWeddingCardCategory(product, filters.type)) &&
       (filters.price === "any" ||
         priceBucketFor(product.price) === filters.price)
     );
@@ -173,8 +213,8 @@ export function facetCounts(products: BrowserProduct[]) {
   const types = WEDDING_CARD_CATEGORIES.map((item) => ({
     value: item.value,
     label: item.label,
-    count: products.filter(
-      (product) => matchesWeddingCardCategory(product, item.value),
+    count: products.filter((product) =>
+      matchesWeddingCardCategory(product, item.value),
     ).length,
   }));
   const prices = PRICE_BUCKETS.map((item) => ({

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 
 import { fetchWeddingProductPage } from "@/lib/catalog-browse";
+import { COLLECTION_PAGE_SIZE } from "@/lib/catalog-browse-options";
+import { parsePageNumber } from "@/lib/pagination";
 import {
   facetCounts,
   weddingFiltersFromSearchParams,
@@ -23,8 +25,9 @@ export default async function HinduWeddingCardPage({
 }: {
   searchParams: Promise<WeddingSearchParams>;
 }) {
+  const params = await searchParams;
   const initialFilters = weddingFiltersFromSearchParams(
-    await searchParams,
+    params,
     "hindu",
   );
   let initialPage: WeddingProductPage = {
@@ -39,6 +42,7 @@ export default async function HinduWeddingCardPage({
     initialPage = await fetchWeddingProductPage({
       collectionType: "hindu",
       filters: initialFilters,
+      offset: (parsePageNumber(params.page, COLLECTION_PAGE_SIZE) - 1) * COLLECTION_PAGE_SIZE,
     });
   } catch (error) {
     console.error("Hindu wedding cards page fetch failed:", error);

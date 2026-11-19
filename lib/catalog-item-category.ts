@@ -140,7 +140,7 @@ const readItemCategoryProductPage = unstable_cache(
   async (
     itemCategory: string,
     offset: number,
-  ): Promise<{ products: CatalogProduct[]; nextOffset: number | null }> => {
+  ): Promise<{ products: CatalogProduct[]; nextOffset: number | null; total: number }> => {
     const optimized = await readStorefrontPage({
       p_item_category: itemCategory,
       p_offset: offset,
@@ -151,6 +151,7 @@ const readItemCategoryProductPage = unstable_cache(
       return {
         products: optimized.products.map(mapCatalogRowToProduct),
         nextOffset: optimized.nextOffset,
+        total: optimized.total,
       };
     }
 
@@ -159,9 +160,10 @@ const readItemCategoryProductPage = unstable_cache(
     return {
       products: products.slice(offset, end),
       nextOffset: end < products.length ? end : null,
+      total: products.length,
     };
   },
-  ["itemCategoryProductPage-v1", String(PRODUCTS_PER_PAGE)],
+  ["itemCategoryProductPage-v2-total", String(PRODUCTS_PER_PAGE)],
   { revalidate: 60, tags: ["catalogue"] },
 );
 
@@ -169,7 +171,7 @@ const readItemCategoryProductPage = unstable_cache(
 export async function fetchItemCategoryProductPage(
   itemCategory: string,
   offset = 0,
-): Promise<{ products: CatalogProduct[]; nextOffset: number | null }> {
+): Promise<{ products: CatalogProduct[]; nextOffset: number | null; total: number }> {
   if (
     !Number.isSafeInteger(offset) ||
     offset < 0 ||
@@ -178,11 +180,12 @@ export async function fetchItemCategoryProductPage(
     throw new Error("Provide a valid product offset.");
   }
   const name = itemCategory.trim();
-  if (!name) return { products: [], nextOffset: null };
+  if (!name) return { products: [], nextOffset: null, total: 0 };
   const page = await readItemCategoryProductPage(name, offset);
   return {
     products: await applyResellerPricingToProducts(page.products),
     nextOffset: page.nextOffset,
+    total: page.total,
   };
 }
 

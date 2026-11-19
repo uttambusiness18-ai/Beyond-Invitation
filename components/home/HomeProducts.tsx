@@ -144,7 +144,7 @@ export default async function HomeProducts({ description }: { description: strin
   return (
     <>
       {featuredProducts.length > 0 ? <JsonLd data={productListJsonLd} /> : null}
-      {pricedPage ? <SaleCollection products={pricedPage.products} nextOffset={pricedPage.nextOffset} /> : <CollectionUnavailable title="Sale Collection" />}
+      {pricedPage ? <SaleCollection products={pricedPage.products} nextOffset={pricedPage.nextOffset} total={pricedPage.total} /> : <CollectionUnavailable title="Sale Collection" />}
       {trendyProducts ? <ProductSection
         label="Fresh from our catalogue"
         title="Trendy Collection"
@@ -159,6 +159,7 @@ export default async function HomeProducts({ description }: { description: strin
         title="Premium Invitations"
         products={weddingBoxesPage.products}
         nextOffset={weddingBoxesPage.nextOffset}
+        total={weddingBoxesPage.total}
         collection="wedding-boxes"
         viewAllHref="/wedding-boxes"
         viewAllText="View All Wedding Boxes"

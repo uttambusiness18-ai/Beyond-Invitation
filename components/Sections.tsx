@@ -215,9 +215,11 @@ export function CelebrationGrid({
 export function SaleCollection({
   products,
   nextOffset,
+  total,
 }: {
   products: Product[];
   nextOffset: number | null;
+  total: number;
 }) {
   return (
     <ProductSection
@@ -225,6 +227,7 @@ export function SaleCollection({
       title="Sale Collection"
       products={products}
       nextOffset={nextOffset}
+      total={total}
       sale
       pricedOnly
       viewAllHref="/collections/wedding"

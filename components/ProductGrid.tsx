@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useProductListHistory } from "@/components/useProductListHistory";
 import type { Product } from "@/types";
-import type { ProductPage } from "@/lib/product-page";
+import { PRODUCTS_PER_PAGE, type ProductPage } from "@/lib/product-page";
+import { scrollToProductList } from "@/lib/pagination";
+import ProductPagination from "@/components/ProductPagination";
 import ProductCard from "./ProductCard";
 
 interface ProductGridProps {
@@ -39,6 +41,7 @@ interface ProductSectionProps {
   title: string;
   products: Product[];
   nextOffset: number | null;
+  total?: number;
   sale?: boolean;
   pricedOnly?: boolean;
   collection?: "wedding-boxes";
@@ -46,95 +49,113 @@ interface ProductSectionProps {
   viewAllText?: string;
 }
 
-/** A full homepage section: heading + grid + optional load more + view all link. */
+/** A homepage collection with one product page at a time. */
 export function ProductSection({
   label,
   title,
   products,
   nextOffset,
+  total = products.length,
   sale = false,
   pricedOnly = false,
   collection,
   viewAllHref,
   viewAllText = "View All",
 }: ProductSectionProps) {
-  const [loadedProducts, setLoadedProducts] = useState(products);
-  const [offset, setOffset] = useState(nextOffset);
+  const [page, setPage] = useState<ProductPage>({ products, nextOffset, total });
+  const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const requestRef = useRef<AbortController | null>(null);
+  const failedPageRef = useRef<number | null>(null);
+  const scrollAfterLoad = useRef(false);
   const { listRef, restoreSnapshot } = useProductListHistory(
-    `home:${JSON.stringify([label, pricedOnly, collection, sale])}`,
-    { products: loadedProducts, nextOffset: offset },
+    `home-pages:${JSON.stringify([label, pricedOnly, collection, sale])}`,
+    { page, currentPage },
   );
 
   useLayoutEffect(() => {
     const restored = restoreSnapshot();
-    setLoadedProducts(restored?.products ?? products);
-    setOffset(restored ? restored.nextOffset : nextOffset);
+    setPage(restored?.page ?? { products, nextOffset, total });
+    setCurrentPage(restored?.currentPage ?? 1);
+    failedPageRef.current = null;
+    scrollAfterLoad.current = false;
     setLoading(false);
     setError("");
     return () => {
       requestRef.current?.abort();
       requestRef.current = null;
     };
-  }, [products, nextOffset, pricedOnly, collection, restoreSnapshot]);
+  }, [products, nextOffset, total, pricedOnly, collection, restoreSnapshot]);
+
+  useLayoutEffect(() => {
+    if (!scrollAfterLoad.current) return;
+    scrollAfterLoad.current = false;
+    scrollToProductList(listRef.current);
+  }, [page, currentPage, listRef]);
 
   const displayedProducts = useMemo(() => {
     const visibleProducts = pricedOnly
-      ? loadedProducts.filter((product) => Number.isFinite(product.price) && product.price > 0)
-      : loadedProducts;
+      ? page.products.filter((product) => Number.isFinite(product.price) && product.price > 0)
+      : page.products;
     if (!sale) return visibleProducts;
     return visibleProducts.map((product) => {
       const onSale = product.price > 0 && product.mrp > product.price;
       return { ...product, onSale, badge: onSale ? "SALE" : product.badge };
     });
-  }, [loadedProducts, sale, pricedOnly]);
+  }, [page.products, sale, pricedOnly]);
 
-  const hasMoreProducts = offset !== null;
+  const totalPages = Math.max(1, Math.ceil(page.total / PRODUCTS_PER_PAGE));
 
-  async function handleLoadMore() {
-    if (offset === null || requestRef.current) return;
+  async function goToPage(requestedPage: number) {
+    if (requestRef.current || !Number.isSafeInteger(requestedPage)) return;
+    let targetPage = Math.min(totalPages, Math.max(1, requestedPage));
+    if (targetPage === currentPage && !error) return;
     const controller = new AbortController();
     requestRef.current = controller;
     setLoading(true);
     setError("");
+    failedPageRef.current = targetPage;
 
     try {
-      const params = new URLSearchParams({ offset: String(offset) });
-      if (pricedOnly) params.set("pricedOnly", "true");
-      if (collection) params.set("collection", collection);
-      const response = await fetch(`/api/catalog/products?${params}`, {
-        credentials: "same-origin",
-        cache: "no-store",
-        signal: controller.signal,
-      });
-      if (!response.ok) throw new Error("Product request failed");
-      const page: ProductPage = await response.json();
-      if (
-        !Array.isArray(page.products) ||
-        (page.nextOffset !== null &&
-          (!Number.isSafeInteger(page.nextOffset) || page.nextOffset <= offset))
-      ) {
-        throw new Error("Invalid product page");
+      const fetchPage = async (pageNumber: number): Promise<ProductPage> => {
+        const offset = (pageNumber - 1) * PRODUCTS_PER_PAGE;
+        const params = new URLSearchParams({ offset: String(offset) });
+        if (pricedOnly) params.set("pricedOnly", "true");
+        if (collection) params.set("collection", collection);
+        const response = await fetch(`/api/catalog/products?${params}`, {
+          credentials: "same-origin",
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        if (!response.ok) throw new Error("Product request failed");
+        const result: ProductPage = await response.json();
+        if (
+          !Array.isArray(result.products) ||
+          !Number.isSafeInteger(result.total) || result.total < 0 ||
+          (result.nextOffset !== null &&
+            (!Number.isSafeInteger(result.nextOffset) || result.nextOffset <= offset))
+        ) throw new Error("Invalid product page");
+        return result;
+      };
+      let result = await fetchPage(targetPage);
+      const lastPage = Math.max(1, Math.ceil(result.total / PRODUCTS_PER_PAGE));
+      // Products may have been removed since the section was first loaded.
+      if (targetPage > lastPage) {
+        targetPage = lastPage;
+        result = await fetchPage(targetPage);
       }
-      if (controller.signal.aborted) return;
-
-      setLoadedProducts((current) => {
-        const seen = new Set(current.map((product) => product.slug));
-        return [
-          ...current,
-          ...page.products.filter((product) => {
-            if (seen.has(product.slug)) return false;
-            seen.add(product.slug);
-            return true;
-          }),
-        ];
-      });
-      setOffset(page.nextOffset);
+      if (controller.signal.aborted || requestRef.current !== controller) return;
+      if (targetPage > Math.max(1, Math.ceil(result.total / PRODUCTS_PER_PAGE))) {
+        throw new Error("Product catalogue changed while loading the page");
+      }
+      scrollAfterLoad.current = true;
+      setPage(result);
+      setCurrentPage(targetPage);
+      failedPageRef.current = null;
     } catch {
-      if (!controller.signal.aborted) {
-        setError("More products could not be loaded. Please try again.");
+      if (!controller.signal.aborted && requestRef.current === controller) {
+        setError("This product page could not be loaded. Please try again.");
       }
     } finally {
       if (requestRef.current === controller) {
@@ -148,7 +169,7 @@ export function ProductSection({
     <section
       className="bg-white py-14 md:py-20"
     >
-      <div ref={listRef} className="mx-auto max-w-[1800px] px-4 sm:px-6 lg:px-8">
+      <div ref={listRef} tabIndex={-1} aria-busy={loading} className="mx-auto max-w-[1800px] scroll-mt-28 px-4 outline-none sm:px-6 lg:px-8">
         <div className="mb-8 flex flex-col gap-4 md:mb-10 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="mb-2 text-sm font-semibold uppercase tracking-[0.1em] text-gold-ink">
@@ -173,27 +194,21 @@ export function ProductSection({
         <ProductGrid products={displayedProducts} />
 
         {error && (
-          <p role="alert" className="mt-4 text-center text-base text-maroon">
-            {error}
-          </p>
+          <div role="alert" className="mt-4 text-center text-base text-maroon">
+            <p>{error}</p>
+            <button type="button" disabled={loading} className="mt-2 font-semibold underline underline-offset-4" onClick={() => {
+              if (failedPageRef.current !== null) void goToPage(failedPageRef.current);
+            }}>Try again</button>
+          </div>
         )}
         <p role="status" className="sr-only">
           {loading
-            ? "Loading more products"
-            : `${displayedProducts.length} products shown`}
+            ? "Loading products"
+            : `Page ${currentPage} of ${totalPages}, ${displayedProducts.length} products shown`}
         </p>
 
         <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
-          {hasMoreProducts && (
-            <button
-              type="button"
-              onClick={handleLoadMore}
-              disabled={loading}
-              className="rounded-full border border-maroon bg-maroon px-8 py-3 text-base font-semibold text-gold-light shadow-sm transition hover:bg-maroon-dark focus:outline-none focus:ring-2 focus:ring-gold focus:ring-offset-2 disabled:cursor-wait disabled:opacity-60"
-            >
-              {loading ? "Loading..." : error ? "Try Again" : "Load More"}
-            </button>
-          )}
+          <ProductPagination currentPage={currentPage} totalPages={totalPages} disabled={loading} label={`${title} pagination`} onPageChange={(number) => { void goToPage(number); }} />
 
           {viewAllHref && (
             <Link

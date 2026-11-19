@@ -11,6 +11,9 @@ import {
 import { SlidersHorizontal, X } from "lucide-react";
 import { subscribeMediaQuery } from "@/lib/media-query";
 import { useProductListHistory } from "@/components/useProductListHistory";
+import ProductPagination from "@/components/ProductPagination";
+import { COLLECTION_PAGE_SIZE } from "@/lib/catalog-browse-options";
+import { parsePageNumber, scrollToProductList } from "@/lib/pagination";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -36,6 +39,18 @@ const gridClass =
 const secondary =
   "rounded-md border border-carbon/20 bg-white px-6 py-3 text-base font-semibold text-carbon transition-colors hover:bg-paper focus-visible:outline-gold";
 type FacetOption = { value: string; label: string; count: number };
+type PageMode = "filter" | "page" | "history";
+
+function writePageUrl(filters: WeddingFilters, pageNumber: number, method: "push" | "replace") {
+  const query = new URLSearchParams(window.location.search);
+  for (const key of ["type", "text", "price", "photos", "sort", "offset", "page"]) query.delete(key);
+  new URLSearchParams(serializeWeddingFilters(filters)).forEach((value, key) => query.set(key, value));
+  if (pageNumber > 1) query.set("page", String(pageNumber));
+  const url = `${window.location.pathname}${query.size ? `?${query}` : ""}${window.location.hash}`;
+  if (url === `${window.location.pathname}${window.location.search}${window.location.hash}`) return;
+  if (method === "push") window.history.pushState(null, "", url);
+  else window.history.replaceState(window.history.state, "", url);
+}
 
 function Facet({
   label,
@@ -122,13 +137,16 @@ export default function WeddingCardsBrowser({
     normalizeFilters(initialFilters),
   );
   const [page, setPage] = useState(initialPage);
-  const [loading, setLoading] = useState<"replace" | "append" | null>(null);
+  const [currentPage, setCurrentPage] = useState(initialPage.pageNumber ?? 1);
+  const currentPageRef = useRef(initialPage.pageNumber ?? 1);
+  const shouldScroll = useRef(false);
+  const [loading, setLoading] = useState<"replace" | "page" | null>(null);
   const [error, setError] = useState("");
   const request = useRef<AbortController | null>(null);
   const failedRequest = useRef<{
     filters: WeddingFilters;
-    offset: number;
-    append: boolean;
+    pageNumber: number;
+    mode: PageMode;
   } | null>(null);
   const filterKey = serializeWeddingFilters(filters);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -139,8 +157,8 @@ export default function WeddingCardsBrowser({
   const visibleKey = visible.map((product) => product.slug).join("|");
   const hasFilters = filters.type !== "all" || filters.price !== "any";
   const { listRef: browserRef, restoreSnapshot, saveSnapshot } = useProductListHistory(
-    `wedding:${collectionType ?? "all"}`,
-    { page, filters },
+    `wedding-pages:${collectionType ?? "all"}`,
+    { page, filters, currentPage },
   );
   const sheetRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
@@ -150,15 +168,15 @@ export default function WeddingCardsBrowser({
   const sheetTitleId = useId();
 
   const requestPage = useCallback(
-    async (nextFilters: WeddingFilters, offset = 0, append = false) => {
-      if (append && request.current) return;
+    async (nextFilters: WeddingFilters, pageNumber = 1, mode: PageMode = "filter") => {
+      const offset = (pageNumber - 1) * COLLECTION_PAGE_SIZE;
       request.current?.abort();
       const controller = new AbortController();
       request.current = controller;
       failedRequest.current = null;
       setError("");
-      setLoading(append ? "append" : "replace");
-      if (!append) {
+      setLoading(mode === "page" ? "page" : "replace");
+      if (mode !== "page") {
         motion.reorderStart();
         setPage((previous) => ({
           ...previous,
@@ -179,30 +197,31 @@ export default function WeddingCardsBrowser({
         });
         if (!response.ok) throw new Error("Unable to load designs.");
         const result: WeddingProductPage = await response.json();
+        const resolvedPage = result.pageNumber ?? pageNumber;
         if (
           !Array.isArray(result.products) ||
           !result.facets ||
           !Number.isSafeInteger(result.total) ||
           result.total < 0 ||
+          !Number.isSafeInteger(resolvedPage) || resolvedPage < 1 ||
+          resolvedPage > Math.max(1, Math.ceil(result.total / COLLECTION_PAGE_SIZE)) ||
           (result.nextOffset !== null &&
             (!Number.isSafeInteger(result.nextOffset) ||
-              result.nextOffset <= offset))
+              result.nextOffset <= (resolvedPage - 1) * COLLECTION_PAGE_SIZE))
         ) {
           throw new Error("Unable to load designs.");
         }
         if (controller.signal.aborted || request.current !== controller) return;
-        setPage((previous) => {
-          const products = append
-            ? [...previous.products, ...result.products]
-            : result.products;
-          const unique = new Map(
-            products.map((product) => [product.slug, product]),
-          );
-          return { ...result, products: [...unique.values()] };
-        });
+        const unique = new Map(result.products.map((product) => [product.slug, product]));
+        currentPageRef.current = resolvedPage;
+        shouldScroll.current = mode === "page";
+        setCurrentPage(resolvedPage);
+        setPage({ ...result, products: [...unique.values()] });
+        if (mode === "page") writePageUrl(nextFilters, resolvedPage, "push");
+        else if (resolvedPage !== pageNumber) writePageUrl(nextFilters, resolvedPage, "replace");
       } catch {
         if (controller.signal.aborted || request.current !== controller) return;
-        failedRequest.current = { filters: nextFilters, offset, append };
+        failedRequest.current = { filters: nextFilters, pageNumber, mode };
         setError("Unable to load designs. Please try again.");
       } finally {
         if (request.current === controller) {
@@ -223,6 +242,12 @@ export default function WeddingCardsBrowser({
     pendingFilters.current = next;
     setFilters(next);
     setPage(restored?.page ?? initialPage);
+    currentPageRef.current = restored?.currentPage ?? initialPage.pageNumber ?? 1;
+    setCurrentPage(currentPageRef.current);
+    shouldScroll.current = false;
+    if (parsePageNumber(new URLSearchParams(window.location.search).get("page")) !== currentPageRef.current) {
+      writePageUrl(next, currentPageRef.current, "replace");
+    }
     setLoading(null);
     setError("");
     return () => {
@@ -242,6 +267,12 @@ export default function WeddingCardsBrowser({
     };
   }, [visibleKey, filterKey, motion, browserRef]);
 
+  useLayoutEffect(() => {
+    if (!shouldScroll.current) return;
+    shouldScroll.current = false;
+    scrollToProductList(browserRef.current);
+  }, [page, currentPage, browserRef]);
+
   useEffect(() => {
     const pathname = window.location.pathname;
     const onPopState = () => {
@@ -254,6 +285,9 @@ export default function WeddingCardsBrowser({
         pendingFilters.current = normalizeFilters(restored.filters);
         setFilters(pendingFilters.current);
         setPage(restored.page);
+        currentPageRef.current = restored.currentPage;
+        setCurrentPage(restored.currentPage);
+        shouldScroll.current = false;
         setLoading(null);
         setError("");
         return;
@@ -261,14 +295,15 @@ export default function WeddingCardsBrowser({
       const next = normalizeFilters(
         parseWeddingFilters(new URLSearchParams(window.location.search)),
       );
+      const pageNumber = parsePageNumber(new URLSearchParams(window.location.search).get("page"));
       if (
         serializeWeddingFilters(next) ===
-        serializeWeddingFilters(pendingFilters.current)
+        serializeWeddingFilters(pendingFilters.current) && pageNumber === currentPageRef.current
       )
         return;
       pendingFilters.current = next;
       setFilters(next);
-      void requestPage(next);
+      void requestPage(next, pageNumber, "history");
     };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
@@ -348,18 +383,17 @@ export default function WeddingCardsBrowser({
     if (!request.current && !error) saveSnapshot();
     pendingFilters.current = next;
     setFilters(next);
-    const query = new URLSearchParams(window.location.search);
-    for (const key of ["type", "text", "price", "photos", "sort", "offset"])
-      query.delete(key);
-    new URLSearchParams(serializeWeddingFilters(next)).forEach((value, key) =>
-      query.set(key, value),
-    );
-    window.history.pushState(
-      null,
-      "",
-      `${window.location.pathname}${query.size ? `?${query}` : ""}${window.location.hash}`,
-    );
+    currentPageRef.current = 1;
+    setCurrentPage(1);
+    writePageUrl(next, 1, "push");
     void requestPage(next);
+  }
+
+  function goToPage(pageNumber: number) {
+    if (request.current || !Number.isSafeInteger(pageNumber) || pageNumber < 1 ||
+        pageNumber > Math.ceil(page.total / COLLECTION_PAGE_SIZE) || pageNumber === currentPageRef.current) return;
+    saveSnapshot();
+    void requestPage(pendingFilters.current, pageNumber, "page");
   }
 
   const facetControls = (
@@ -384,7 +418,9 @@ export default function WeddingCardsBrowser({
     <div
       data-wedding-browser
       ref={browserRef}
-      className="grid items-start gap-x-6 lg:grid-cols-[200px_minmax(0,1fr)]"
+      tabIndex={-1}
+      aria-busy={loading !== null}
+      className="grid scroll-mt-28 items-start gap-x-6 outline-none lg:grid-cols-[200px_minmax(0,1fr)]"
     >
       <aside
         aria-label={`Filter ${productLabel}`}
@@ -419,7 +455,7 @@ export default function WeddingCardsBrowser({
             aria-live="polite"
             className="text-base tabular-nums text-ink-mid"
           >
-            {loading === "replace"
+            {loading
               ? "Loading designs…"
               : error && !visible.length
                 ? "Unable to load designs"
@@ -484,7 +520,7 @@ export default function WeddingCardsBrowser({
               onPress={() => {
                 const retry = failedRequest.current;
                 if (retry)
-                  void requestPage(retry.filters, retry.offset, retry.append);
+                  void requestPage(retry.filters, retry.pageNumber, retry.mode);
               }}
             >
               Try again
@@ -506,26 +542,12 @@ export default function WeddingCardsBrowser({
             </div>
             <div className="mt-10 text-center">
               <p className="mb-4 text-base text-ink-mid">
-                Showing {visible.length} of {page.total} designs
+                Showing {(currentPage - 1) * COLLECTION_PAGE_SIZE + 1}–{Math.min(page.total, (currentPage - 1) * COLLECTION_PAGE_SIZE + visible.length)} of {page.total} designs
               </p>
-              {page.nextOffset !== null ? (
-                <Button
-                  variant="outline"
-                  type="button"
-                  className={`h-auto ${secondary} disabled:cursor-wait disabled:opacity-60`}
-                  isDisabled={loading !== null}
-                  onPress={() => {
-                    if (page.nextOffset !== null)
-                      void requestPage(
-                        pendingFilters.current,
-                        page.nextOffset,
-                        true,
-                      );
-                  }}
-                >
-                  {loading === "append" ? "Loading…" : "Show more"}
-                </Button>
-              ) : null}
+              <ProductPagination currentPage={currentPage}
+                totalPages={Math.max(1, Math.ceil(page.total / COLLECTION_PAGE_SIZE))}
+                onPageChange={goToPage} disabled={loading !== null}
+                label={`${productLabel} pages`} />
             </div>
           </>
         ) : !error ? (

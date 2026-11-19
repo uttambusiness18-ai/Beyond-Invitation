@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 
 import JsonLd from "@/components/seo/JsonLd";
 import { fetchWeddingProductPage } from "@/lib/catalog-browse";
+import { COLLECTION_PAGE_SIZE } from "@/lib/catalog-browse-options";
+import { parsePageNumber } from "@/lib/pagination";
 import { facetCounts, weddingFiltersFromSearchParams, type BrowserProduct, type WeddingProductPage, type WeddingSearchParams } from "@/lib/wedding-cards";
 import {
   DEFAULT_OG_IMAGE,
@@ -91,11 +93,13 @@ function getProductImage(product: BrowserProduct) {
 }
 
 export default async function WeddingBoxesPage({ searchParams }: { searchParams: Promise<WeddingSearchParams> }) {
-  const initialFilters = weddingFiltersFromSearchParams(await searchParams, "boxes");
+  const params = await searchParams;
+  const initialFilters = weddingFiltersFromSearchParams(params, "boxes");
+  const pageNumber = parsePageNumber(params.page, COLLECTION_PAGE_SIZE);
   let initialPage: WeddingProductPage = { products: [], nextOffset: null, total: 0, facets: facetCounts([]) };
   let errorMessage = "";
   try {
-    initialPage = await fetchWeddingProductPage({ collectionType: "boxes", filters: initialFilters });
+    initialPage = await fetchWeddingProductPage({ collectionType: "boxes", filters: initialFilters, offset: (pageNumber - 1) * COLLECTION_PAGE_SIZE });
   } catch (error) {
     console.error("Wedding boxes page fetch failed:", error);
     errorMessage = "Unable to load wedding boxes.";
@@ -126,7 +130,7 @@ export default async function WeddingBoxesPage({ searchParams }: { searchParams:
     name: "Wedding boxes by Beyond Invitation",
     itemListElement: initialPage.products.map((product, index) => ({
       "@type": "ListItem",
-      position: index + 1,
+      position: ((initialPage.pageNumber ?? pageNumber) - 1) * COLLECTION_PAGE_SIZE + index + 1,
       url: siteUrl(`/products/${product.slug}`),
       item: {
         "@type": "Product",

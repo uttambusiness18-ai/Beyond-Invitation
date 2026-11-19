@@ -33,7 +33,7 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error("Homepage product page could not be loaded:", error);
     return NextResponse.json(
-      { error: "Unable to load more products. Please try again." },
+      { error: "Unable to load this product page. Please try again." },
       { status: 503, headers },
     );
   }

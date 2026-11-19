@@ -50,7 +50,7 @@ export default function FilterableProductGrid({
   const isFiltered = priceKey !== "all" || sortKey !== "featured";
 
   return (
-    <div ref={pagination.listRef} className="space-y-6">
+    <div ref={pagination.listRef} tabIndex={-1} className="scroll-mt-28 space-y-6 outline-none">
       <div className="flex flex-col gap-4 rounded-2xl border border-gold/20 bg-white/70 p-4 shadow-sm md:flex-row md:items-center md:justify-between">
         <RadioGroup
           value={priceKey}
@@ -100,7 +100,7 @@ export default function FilterableProductGrid({
           {loading === "replace" ? "Loading products…" : error && page.products.length === 0 ? "Products unavailable" : <>
           Showing{" "}
           <span className="font-semibold text-ink">
-            {page.products.length}
+            {pagination.rangeStart === pagination.rangeEnd ? pagination.rangeEnd : `${pagination.rangeStart}–${pagination.rangeEnd}`}
           </span>{" "}
           of{" "}
           <span className="font-semibold text-ink">
@@ -123,7 +123,7 @@ export default function FilterableProductGrid({
       </div>
 
       <div aria-busy={Boolean(loading)}>
-        {loading === "replace" ? (
+        {loading === "replace" && page.products.length === 0 ? (
           <div className="grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-5 md:grid-cols-3 lg:grid-cols-4" aria-hidden="true">
             {Array.from({ length: 10 }, (_, index) => (
               <div key={index} className="min-w-0 motion-safe:animate-pulse">

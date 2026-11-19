@@ -296,7 +296,9 @@ const readWeddingBrowsePage = unstable_cache(
         ...weddingPriceBounds(filters.price),
         ...(pricedOnly ? { p_priced_only: true } : {}),
       }),
-      collectionType ? Promise.resolve(null) : readWeddingCategoryCounts(margin),
+      collectionType
+        ? Promise.resolve(null)
+        : readWeddingCategoryCounts(margin),
     ]);
     if (result !== null && (collectionType || categoryCounts)) {
       if (!result.facets)
@@ -321,32 +323,37 @@ const readWeddingBrowsePage = unstable_cache(
         facets: {
           categoryTotal: categoryCounts?.total ?? facetTotal,
           total: facetTotal,
-          types: categoryCounts?.types ?? WEDDING_CARD_CATEGORIES.map((t) => ({
-            value: t.value,
-            label: t.label,
-            count: subjects
-              ? t.value === collectionType
-                ? facetTotal
-                : 0
-              : 0,
-          })),
+          types:
+            categoryCounts?.types ??
+            WEDDING_CARD_CATEGORIES.map((t) => ({
+              value: t.value,
+              label: t.label,
+              count: subjects
+                ? t.value === collectionType
+                  ? facetTotal
+                  : 0
+                : 0,
+            })),
           prices,
           showPrice: prices.length >= 2,
         },
       };
     }
-    const source = collectionType && subjects
-      ? (await fetchErpProductsBase())
-          .filter((product) =>
-            subjects.includes(product.subject.trim().toLowerCase()),
-          )
-          .sort(compareWeddingCardProducts)
-      : itemCategory
-        ? await fetchProductsByItemCategoryBase(itemCategory)
-        : await fetchWeddingCardsWithCategoriesBase();
+    const source =
+      collectionType && subjects
+        ? (await fetchErpProductsBase())
+            .filter((product) =>
+              subjects.includes(product.subject.trim().toLowerCase()),
+            )
+            .sort(compareWeddingCardProducts)
+        : itemCategory
+          ? await fetchProductsByItemCategoryBase(itemCategory)
+          : await fetchWeddingCardsWithCategoriesBase();
     const displayed = source.map((p) => browserProduct(forDisplay(p, margin)));
     const categoryProducts = selectedCategory
-      ? displayed.filter((product) => matchesWeddingCardCategory(product, selectedCategory.value))
+      ? displayed.filter((product) =>
+          matchesWeddingCardCategory(product, selectedCategory.value),
+        )
       : displayed;
     const matches = sortWeddingProducts(
       applyWeddingFilters(categoryProducts, filters),
@@ -388,14 +395,28 @@ export async function fetchWeddingProductPage({
 } = {}): Promise<WeddingProductPage> {
   validateOffset(offset);
   const reseller = await getActiveResellerFromCookies();
-  const page = await readWeddingBrowsePage(
+  let page = await readWeddingBrowsePage(
     collectionType ?? null,
     normalizeWeddingCollectionFilters(filters, collectionType),
     offset,
     reseller?.marginPercent ?? 0,
   );
+  // A saved URL can outlive the final page when products are unpublished.
+  if (offset > 0 && offset >= page.total) {
+    offset =
+      Math.max(0, Math.ceil(page.total / COLLECTION_PAGE_SIZE) - 1) *
+      COLLECTION_PAGE_SIZE;
+    if (page.total > 0)
+      page = await readWeddingBrowsePage(
+        collectionType ?? null,
+        normalizeWeddingCollectionFilters(filters, collectionType),
+        offset,
+        reseller?.marginPercent ?? 0,
+      );
+  }
   return {
     ...page,
+    pageNumber: Math.floor(offset / COLLECTION_PAGE_SIZE) + 1,
     products: page.products.map((p) =>
       browserProduct(reseller ? repriceProduct(p, reseller) : p),
     ),
