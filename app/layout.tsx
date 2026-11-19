@@ -8,6 +8,7 @@ import { SITE_NAME } from "@/components/siteConfig";
 import { getSiteUrl, DEFAULT_OG_IMAGE } from "@/lib/site-config";
 
 import StorefrontShell from "@/components/StorefrontShell";
+import ChatWidgetLoader from "@/components/chatbot/ChatWidgetLoader";
 import { cn } from "@/lib/utils";
 
 const inter = Inter({subsets:['latin'],variable:'--font-sans'});
@@ -104,6 +105,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         className="min-h-screen bg-white font-body text-carbon antialiased"
       >
         <StorefrontShell>{children}</StorefrontShell>
+        <ChatWidgetLoader />
       </body>
     </html>
   );

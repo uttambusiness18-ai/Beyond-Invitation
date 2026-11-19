@@ -13,6 +13,7 @@
     "shiprocket:quick:check": "node scripts/check-shiprocket.cjs --quick"
   },
   "dependencies": {
+    "@google/genai": "^3.6.1",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.116.0",
     "class-variance-authority": "^0.7.1",

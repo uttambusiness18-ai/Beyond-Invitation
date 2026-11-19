@@ -200,7 +200,7 @@ beyond-invitation/
 Recommended:
 
 ```text
-Node.js 18.18+
+Node.js 22+ (required by the Google GenAI SDK)
 npm
 ```
 
@@ -289,6 +289,12 @@ Do **not** commit this file.
 # --------------------------------------------------
 
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
+
+# AI storefront assistant (server-only Gemini credentials)
+GEMINI_API_KEY=your_gemini_api_key_here
+GEMINI_MODEL=gemini-3.5-flash-lite
+NEXT_PUBLIC_CHATBOT_ENABLED=true
+CHATBOT_DAILY_LIMIT=800
 
 
 # --------------------------------------------------
@@ -723,10 +729,27 @@ NEXT_PUBLIC_SITE_URL=https://your-domain.com
 
 # API Routes
 
+The storefront assistant is mounted once in the root layout. Its browser-only launcher loads a separate chat panel on first open. Set `NEXT_PUBLIC_CHATBOT_ENABLED=false` and rebuild/redeploy to hide the widget; the API also checks this flag and returns 404 when disabled. `GEMINI_API_KEY` and `GEMINI_MODEL` are server-only and must be configured on the host. There is no model ID fallback in application code. Local placeholder credentials return the friendly showroom fallback.
+
+`POST /api/chat` accepts only recent text messages and a public page path. It retains the last eight messages, validates the latest user message at 1–500 characters, strips markup, and removes query/hash/private path context. It never adds customer identity, cookies, IP addresses or auth details to Gemini requests. Conversation display state lives in the browser's `sessionStorage`; there are no database writes or server chat logs. Only fixed diagnostics, provider error status, and catalogue size are logged.
+
+Business facts live in `data/chatbot-knowledge.ts`. Keep its Jackson Lane address independent of the older address in other site configuration. Missing facts are explicitly marked `NOT PROVIDED`. Catalogue reads go through `lib/products.ts`, using the same visitor pricing as storefront listings; model-returned slugs are checked against that catalogue before real card data is returned. The text context caches for 60 seconds. Above 25,000 estimated tokens, it sends the subject header and up to 60 search results instead of the full list.
+
+Each admitted message makes one Gemini `generateContent` call: JSON schema output, 600 maximum output tokens, minimum thinking, a 15-second timeout, retries and automatic continuation disabled. Temperature is requested at 0.3; newer models may ignore sampling overrides according to Google's current model documentation. Provider request storage is disabled. Failures return HTTP 200 with the fixed WhatsApp/showroom fallback; malformed customer requests return 400 with a short validation message.
+
+In-memory rate limits are eight messages per rolling minute and 40 per UTC day per IP, plus `CHATBOT_DAILY_LIMIT` per UTC day globally (default 800). These are **per running process**. The documented Vercel deployment is serverless: counters reset on cold starts and are not shared across instances, so this is not a durable project-wide quota. Keep the Gemini project on the free tier and set its provider quotas appropriately. A custom host must replace incoming forwarded-IP headers at its trusted proxy. No persistent limiter or database infrastructure was added.
+
+Gemini setup was checked against the official [SDK guide](https://aistudio.google.com/docs/libraries), [SDK configuration reference](https://googleapis.github.io/js-genai/release_docs/interfaces/types.GenerateContentConfig.html), [structured output guide](https://aistudio.google.com/docs/structured-output), [model guide](https://aistudio.google.com/docs/models/gemini-3.5-flash-lite), and [free-tier pricing](https://aistudio.google.com/docs/pricing#gemini-3.5-flash-lite). The environment example above contains the selected current free-tier Flash-Lite default. Verify model availability and quotas before changing it; another model may require different thinking settings.
+
+Run `npx tsc --noEmit`, `npm run lint`, `npm test`, and `npm run build`. `tests/chatbot.test.cjs` exercises catalogue formatting, authoritative slug mapping, request validation, privacy boundaries, rate limits, timeout and failure handling without real credentials.
+
+With a real local key and `npm run dev` running, `node scripts/check-chatbot.cjs` sends the seven acceptance prompts and writes their replies to the ignored `chatbot-live-results.log`. It uses a real priced product from `/api/search` for the current-product question. Leave at least a minute between full runs to respect the eight-message limit. Test an invalid key by restarting the dev process with a temporary environment override; do not replace or print your saved credential.
+
 Important application API routes include:
 
 | Route                              | Purpose                                             |
 | ---------------------------------- | --------------------------------------------------- |
+| `POST /api/chat`                   | AI product guidance with validated catalogue cards |
 | `GET /api/search?q=...`            | Product search                                      |
 | `POST /api/contact-lead`           | ERPNext contact/lead creation                       |
 | `GET /api/instagram-reels`         | Fetch Instagram reels                               |

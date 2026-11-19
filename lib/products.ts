@@ -6,6 +6,10 @@ import {
 } from "@/lib/catalog";
 import { applyResellerPricingToProducts } from "@/lib/reseller";
 
+// Shared public product entry point for consumers such as the chat assistant.
+export { getCatalogProducts } from "@/lib/catalog";
+export type { CatalogProduct } from "@/lib/catalog";
+
 const categories = categoriesData as Category[];
 
 function normalizeSearchText(value: unknown): string {
