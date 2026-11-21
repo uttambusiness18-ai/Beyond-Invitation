@@ -143,8 +143,8 @@ export default function CookieConsent() {
               >
                 Essential cookies keep sign-in, your cart, wishlist and checkout
                 working. With your permission, Google cookies also help us
-                understand visits and measure purchases from our ads. You can
-                change your choice in Cookie preferences below.
+                understand visits and measure purchases and enquiries from our ads.
+                You can change your choice in Cookie preferences below.
               </p>
             </div>
           </div>

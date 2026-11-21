@@ -579,7 +579,8 @@ The integration creates an ERPNext Lead containing customer enquiry information.
 The storefront loads Google container `GTM-PM7X2BZK`, which is connected to
 `AW-18574685891`, and configures Google Analytics 4 measurement ID
 `G-X379LZMKP7` through the same runtime. The purchase conversion destination is
-`AW-18574685891/4scPCKSbrrsdEMPtjJlF`. Configuration is in `lib/google-tracking.ts`;
+`AW-18574685891/4scPCKSbrrsdEMPtjJlF`; the Submit lead form destination is
+`AW-18574685891/39GSCNLBy7wdEMPtjJlF`. Configuration is in `lib/google-tracking.ts`;
 no extra environment variables or second Google loader are required.
 
 Analytics sends a `page_view` after optional-cookie acceptance and on storefront
@@ -596,14 +597,23 @@ returns the matching, authorized order with `paymentStatus: "paid"` and
 `testMode: false`. The conversion sends the stored order total (including shipping)
 in INR and the order UUID as `transaction_id`. Pending payments can convert after
 their receipt updates to paid. The success URL or Razorpay callback alone cannot
-trigger a conversion. Enquiry submissions are not tracked as conversions.
+trigger a conversion.
+
+Submit lead form measurement runs only after the enquiry form receives a successful
+HTTP response with `success: true` from `/api/contact-lead`. It sends the supplied
+fixed value of `1.0` in `INR`, using the existing Google tag. Page loads, validation
+errors, failed requests, and honeypot submissions do not trigger this conversion.
+The submit guard prevents repeated clicks from sending duplicate requests; another
+successfully submitted enquiry can send a new conversion. The event is called from
+the successful submission handler, so rerendering the success message does not
+send it again. No form fields or customer details are included in the event.
 
 The cookie banner offers optional measurement or essential cookies only. The
 Google script waits for acceptance; an earlier version's essential-cookie
 acceptance is not treated as advertising consent. Visitors can change their choice
 using **Cookie preferences** in the footer. Consent Mode keeps advertising user
 data and personalisation denied; enhanced conversions and remarketing are not part
-of this integration. The custom purchase event contains no customer name, email,
+of this integration. The custom conversion events contain no customer name, email,
 phone, address, or notes. Tracking URLs exclude private order capabilities and
 query fields, retaining only standard advertising attribution parameters.
 
@@ -615,10 +625,10 @@ server-to-server conversion integration.
 
 Verification:
 
-- `node --test tests/google-tracking.test.cjs tests/cookie-consent.test.cjs tests/payment-result-ui.test.cjs`
+- `node --test tests/google-tracking.test.cjs tests/enquiry-form.test.cjs`
 - `node scripts/check-google-tag.cjs` checks the currently published Google runtime
-  for Analytics views and Ads purchases with all measurement requests intercepted,
-  so it cannot send test visits or conversions.
+  for Analytics views, Ads purchases, and lead submissions with all measurement
+  requests intercepted, so it cannot send test visits or conversions.
 - After deployment, accept optional cookies and visit a few storefront pages.
   Check `page_view` events in Google Analytics **Reports > Realtime** for
   `G-X379LZMKP7`. The supplied screenshot labels this stream **ExpenseFlow Pro Web**;
@@ -627,7 +637,11 @@ Verification:
   optional cookies and complete a genuine live purchase. Confirm one conversion
   with label `4scPCKSbrrsdEMPtjJlF`, the actual INR total, and the order UUID.
   Test-mode payments intentionally do not fire the production conversion.
-- In Google Ads, keep this action in the **Purchase** category and use transaction
+- After deployment, use Google Tag Assistant with optional cookies accepted and a
+  genuine enquiry. Confirm one conversion with label `39GSCNLBy7wdEMPtjJlF`, value
+  `1.0`, and currency `INR` after the success message. Do not add a second GTM trigger
+  for the same lead destination.
+- In Google Ads, keep the purchase action in the **Purchase** category and use transaction
   values and **Every** counting. The existing automatic `/wedding-cards` page-view
   action is configured remotely in Google, not by this code. To optimize campaigns
   for purchases only, exclude that page-view action from bidding goals or mark it

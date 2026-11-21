@@ -112,6 +112,7 @@ async function main() {
     const purchase = { id: orderId, paymentStatus: "paid", testMode: false, amountPaise: 125000, currency: "INR" };
     assert.equal(tracking.syncGoogleTracking(), false);
     assert.equal(tracking.trackPurchaseConversion(purchase), false);
+    assert.equal(tracking.trackLeadConversion(), false);
     assert.equal(tagLoads, 0, "The Google script must wait for consent");
     assert.equal(requests.length, 0);
     consent.saveCookieConsent("accepted");
@@ -124,6 +125,10 @@ async function main() {
     const conversions = () => requests.filter((request) => {
       const url = new URL(request.url);
       return url.pathname.includes("/conversion/18574685891/") && url.searchParams.get("label") === "4scPCKSbrrsdEMPtjJlF";
+    });
+    const leadConversions = () => requests.filter((request) => {
+      const url = new URL(request.url);
+      return url.pathname.includes("/conversion/18574685891/") && url.searchParams.get("label") === "39GSCNLBy7wdEMPtjJlF";
     });
     const analyticsPageViews = () => requests.flatMap((request) => {
       const url = new URL(request.url);
@@ -159,15 +164,34 @@ async function main() {
     assert.equal(analyticsPageViews().length, 2, "Navigation must produce exactly one additional GA4 page view");
     assert.equal(analyticsPageViews()[1].get("dl"), "https://www.beyondinvitation.co.in/track-order");
     assert.equal(analyticsPageViews()[1].get("dr"), "https://www.beyondinvitation.co.in/checkout/success");
+
+    window.history.pushState({}, "", `/contact?email=${secretMarkers[3]}&private=${secretMarkers[2]}#message=${secretMarkers[0]}`);
+    window.document.title = "Contact us";
+    tracking.syncGoogleTracking();
+    tracking.syncGoogleTracking();
+    await waitUntil(() => analyticsPageViews().length >= 3);
+    assert.equal(analyticsPageViews().length, 3);
+    assert.equal(leadConversions().length, 0, "Visiting the enquiry form must not count as a lead");
+    assert.equal(tracking.trackLeadConversion(), true);
+    await waitUntil(() => leadConversions().length > 0);
+    assert.equal(leadConversions().length, 1, "A successful enquiry must produce one lead request");
+    const leadConversion = new URL(leadConversions()[0].url);
+    assert.equal(tracking.GOOGLE_ADS_LEAD_DESTINATION, "AW-18574685891/39GSCNLBy7wdEMPtjJlF");
+    assert.equal(leadConversion.searchParams.get("value"), "1");
+    assert.equal(leadConversion.searchParams.get("currency_code"), "INR");
+    assert.equal(leadConversion.searchParams.get("url"), "https://www.beyondinvitation.co.in/contact");
+    assert.equal(leadConversion.searchParams.get("ref"), "https://www.beyondinvitation.co.in/checkout");
     consent.saveCookieConsent("declined");
     assert.equal(tracking.syncGoogleTracking(), false);
     window.history.pushState({}, "", `/catalog?private=${secretMarkers[2]}#token=${secretMarkers[0]}`);
     assert.equal(tracking.syncGoogleTracking(), false);
     assert.equal(tracking.trackPurchaseConversion(purchase), false);
+    assert.equal(tracking.trackLeadConversion(), false);
     // Give batched requests and the existing Ads history listener time to run.
     await delay(5500);
-    assert.equal(analyticsPageViews().length, 2, "Declined consent and repeated sync calls must not add GA4 page views");
+    assert.equal(analyticsPageViews().length, 3, "Declined consent and repeated sync calls must not add GA4 page views");
     assert.equal(conversions().length, 1, "Client navigation must not duplicate the purchase");
+    assert.equal(leadConversions().length, 1, "Client navigation and declined consent must not add lead conversions");
     assert.equal(tagLoads, 1, "There must be one shared Google tag loader");
     assert.equal(analyticsLoads, 1, "The Google runtime must load its GA4 destination once");
     const captured = decodeURIComponent(JSON.stringify(requests));
@@ -182,6 +206,9 @@ async function main() {
       currency: "INR",
       transactionId: orderId,
       interceptedPurchaseRequests: conversions().length,
+      leadDestination: tracking.GOOGLE_ADS_LEAD_DESTINATION,
+      leadValue: 1,
+      interceptedLeadRequests: leadConversions().length,
       interceptedRequests: requests.length,
       privateDataLeaked: false,
       realConversionsSent: 0,

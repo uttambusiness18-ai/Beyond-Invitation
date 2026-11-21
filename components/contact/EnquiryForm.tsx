@@ -17,6 +17,7 @@ import {
   formatInr, isValidIndianMobile, normaliseMobile, requirementFromSubject, type EnquiryProduct,
 } from "@/lib/contact";
 import { CONTACT } from "@/lib/site-config";
+import { trackLeadConversion } from "@/lib/google-tracking";
 
 const labelClass = "mb-2 text-sm font-semibold leading-5 text-ink";
 const hintClass = "mt-2 text-sm leading-relaxed text-ink-mid";
@@ -163,11 +164,12 @@ export default function EnquiryForm({ enquiryProduct }: { enquiryProduct: Enquir
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
       });
       const result = await response.json().catch(() => null);
-      if (!response.ok || !result?.success) {
+      if (!response.ok || result?.success !== true) {
         setSubmitError(typeof result?.message === "string" && result.message.trim() ? result.message : "");
         return;
       }
       setSuccess({ name, mobile: phone });
+      trackLeadConversion();
     } catch {
       setSubmitError("");
     } finally {

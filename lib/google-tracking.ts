@@ -5,6 +5,7 @@ export const GOOGLE_TAG_ID = "GTM-PM7X2BZK";
 export const GOOGLE_ANALYTICS_ID = "G-X379LZMKP7";
 export const GOOGLE_ADS_ID = "AW-18574685891";
 export const GOOGLE_ADS_PURCHASE_DESTINATION = `${GOOGLE_ADS_ID}/4scPCKSbrrsdEMPtjJlF`;
+export const GOOGLE_ADS_LEAD_DESTINATION = `${GOOGLE_ADS_ID}/39GSCNLBy7wdEMPtjJlF`;
 export const GOOGLE_TAG_SCRIPT_ID = "beyond-google-tag";
 
 declare global {
@@ -63,7 +64,7 @@ function consentSettings(accepted: boolean) {
   return {
     ad_storage: accepted ? "granted" : "denied",
     analytics_storage: accepted ? "granted" : "denied",
-    // Visit and purchase measurement only: no customer data or remarketing.
+    // Visit and conversion measurement only: no customer data or remarketing.
     ad_user_data: "denied",
     ad_personalization: "denied",
   };
@@ -137,7 +138,25 @@ export function syncGoogleTracking(): boolean {
     }
     return true;
   } catch {
-    // Analytics must never interrupt checkout or the consent controls.
+    // Analytics must never interrupt forms, checkout, or the consent controls.
+    return false;
+  }
+}
+
+/** Call once after the enquiry API confirms a successful lead submission. */
+export function trackLeadConversion(): boolean {
+  try {
+    if (!syncGoogleTracking() || !window.gtag) return false;
+    window.gtag("event", "conversion", {
+      send_to: GOOGLE_ADS_LEAD_DESTINATION,
+      value: 1.0,
+      currency: "INR",
+      page_location: googleTrackingUrl(window.location.href, true),
+      page_referrer: googleTrackingUrl(document.referrer),
+    });
+    return true;
+  } catch {
+    // An optional tracking failure must never turn a saved enquiry into an error.
     return false;
   }
 }
