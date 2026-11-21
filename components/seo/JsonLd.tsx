@@ -6,7 +6,7 @@ export default function JsonLd({ data }: JsonLdProps) {
   if (!data) return null;
 
   try {
-    const json = JSON.stringify(data);
+    const json = JSON.stringify(data).replace(/</g, "\\u003c");
 
     return (
       <script

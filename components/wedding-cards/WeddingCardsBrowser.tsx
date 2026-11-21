@@ -545,6 +545,11 @@ export default function WeddingCardsBrowser({
                 Showing {(currentPage - 1) * COLLECTION_PAGE_SIZE + 1}–{Math.min(page.total, (currentPage - 1) * COLLECTION_PAGE_SIZE + visible.length)} of {page.total} designs
               </p>
               <ProductPagination currentPage={currentPage}
+                getPageHref={collectionType === "bengali" ? (pageNumber) => {
+                  const query = new URLSearchParams(filterKey);
+                  if (pageNumber > 1) query.set("page", String(pageNumber));
+                  return `/collections/wedding-card-bengali${query.size ? `?${query}` : ""}`;
+                } : undefined}
                 totalPages={Math.max(1, Math.ceil(page.total / COLLECTION_PAGE_SIZE))}
                 onPageChange={goToPage} disabled={loading !== null}
                 label={`${productLabel} pages`} />

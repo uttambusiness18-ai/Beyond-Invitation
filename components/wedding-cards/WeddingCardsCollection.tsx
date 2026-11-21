@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+import { Suspense, type ReactNode } from "react";
 import Link from "next/link";
 import { WEDDING_BOX_FAQS, type WeddingProductPage, type WeddingFilters, type WeddingCollectionType } from "@/lib/wedding-cards";
 import { WeddingCardsMotion } from "@/components/wedding-cards/WeddingCardsMotion";
@@ -12,6 +12,11 @@ export default function WeddingCardsCollection({
   collectionType,
   errorMessage = "",
   emptyTitle = "No wedding cards just yet",
+  intro,
+  headerContent,
+  children,
+  faqs,
+  faqTitle,
 }: {
   title?: string;
   initialPage: WeddingProductPage;
@@ -19,6 +24,11 @@ export default function WeddingCardsCollection({
   collectionType?: WeddingCollectionType;
   errorMessage?: string;
   emptyTitle?: string;
+  intro?: string;
+  headerContent?: ReactNode;
+  children?: ReactNode;
+  faqs?: readonly { question: string; answer: string }[];
+  faqTitle?: string;
 }) {
   const productLabel = collectionType === "boxes" ? "wedding boxes" : "wedding cards";
 
@@ -26,7 +36,9 @@ export default function WeddingCardsCollection({
     <WeddingCardsMotion>
       <section id="collection" aria-labelledby="wedding-cards-title" className="mx-auto max-w-[1800px] px-4 pb-12 pt-6 sm:px-6 sm:pt-8 lg:px-8">
         <header className="mb-3 sm:mb-5">
+          {headerContent}
           <h1 id="wedding-cards-title" className="text-[1.75rem] font-semibold leading-tight tracking-[-0.025em] text-maroon sm:text-[2rem]">{title}</h1>
+          {intro && <p className="mt-3 max-w-4xl text-base leading-7 text-ink-mid">{intro}</p>}
         </header>
         {errorMessage || !initialPage.facets.categoryTotal ? (
           <div className="rounded-3xl border border-gold/20 bg-white/80 p-8 text-center sm:p-12">
@@ -51,7 +63,8 @@ export default function WeddingCardsCollection({
           </Suspense>
         )}
       </section>
-      <WeddingCardsFaq items={collectionType === "boxes" ? WEDDING_BOX_FAQS : undefined} />
+      {children}
+      <WeddingCardsFaq title={faqTitle} items={faqs ?? (collectionType === "boxes" ? WEDDING_BOX_FAQS : undefined)} />
     </WeddingCardsMotion>
   );
 }

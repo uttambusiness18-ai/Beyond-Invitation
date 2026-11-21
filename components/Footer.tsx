@@ -6,6 +6,10 @@ const footerColumns = [
   {
     heading: "Explore",
     links: [
+      {
+        label: "Bengali Wedding Cards",
+        href: "/collections/wedding-card-bengali",
+      },
       { label: "Our Story", href: "/about" },
       { label: "Contact Us", href: "/contact" },
       { label: "Visit Us", href: "/visit-us" },
@@ -136,7 +140,11 @@ export default function Footer() {
                     </Link>
                   </li>
                 ))}
-                {col.heading === "More" && <li><CookiePreferencesButton /></li>}
+                {col.heading === "More" && (
+                  <li>
+                    <CookiePreferencesButton />
+                  </li>
+                )}
               </ul>
             </div>
           ))}
