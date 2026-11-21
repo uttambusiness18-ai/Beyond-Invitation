@@ -146,7 +146,21 @@ test("network failures do not convert and remain retryable", async t => {
   assert.ok(form.query('[role="alert"]'));
   await form.submit();
   assert.deepEqual(form.conversions, [[]], "Only the confirmed retry converts, without sending form data to tracking");
+  const [first, retry] = form.requests.map(([, options]) => JSON.parse(options.body));
+  assert.match(first.requestId, /^[0-9a-f-]{36}$/);
+  assert.equal(retry.requestId, first.requestId, "Retrying the same enquiry keeps its receipt ID");
   assert.ok(form.query('[role="status"]'));
+});
+
+test("editing an enquiry after a failed attempt starts a new receipt", async t => {
+  const form = await formHarness(t, async () => { throw new Error("Network unavailable"); });
+  await form.fill();
+  await form.submit();
+  await form.setInput("name", "Updated Customer");
+  await form.submit();
+  const [first, edited] = form.requests.map(([, options]) => JSON.parse(options.body));
+  assert.notEqual(edited.requestId, first.requestId);
+  assert.equal(edited.name, "Updated Customer");
 });
 
 test("one confirmed response converts once despite duplicate submits, and another enquiry can convert", async t => {
@@ -164,6 +178,8 @@ test("one confirmed response converts once despite duplicate submits, and anothe
   await form.fill();
   await form.submit();
   assert.equal(form.requests.length, 2);
+  const [first, another] = form.requests.map(([, options]) => JSON.parse(options.body));
+  assert.notEqual(another.requestId, first.requestId, "Send another enquiry starts a separate receipt");
   await act(() => resolveResponse({ ok: true, json: async () => ({ success: true }) }));
   assert.deepEqual(form.conversions, [[], []]);
 });

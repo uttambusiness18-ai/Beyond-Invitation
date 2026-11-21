@@ -564,13 +564,19 @@ RESELLER_MAX_MARGIN_PERCENT=100
 
 # Contact Leads
 
-The contact form sends enquiries to ERPNext through:
+The contact form saves enquiries in Supabase through:
 
 ```text
 POST /api/contact-lead
 ```
 
-The integration creates an ERPNext Lead containing customer enquiry information.
+Review every submitted field in **Admin → Contact enquiries** at
+`/admin/contact-enquiries`, with search and pagination. No sign-in is required for
+the page or its API, so anyone with either URL can read the submitted details. Apply the migration in
+[Contact enquiries setup](supabase/CONTACT_ENQUIRIES_SETUP.md) before using this feature.
+Submissions are saved independently of the optional ERPNext integration; when ERP
+credentials are configured, new enquiries are also forwarded to the CRM. Older
+ERP-only enquiries are not automatically imported into the website inbox.
 
 ---
 
@@ -765,7 +771,8 @@ Important application API routes include:
 | ---------------------------------- | --------------------------------------------------- |
 | `POST /api/chat`                   | AI product guidance with validated catalogue cards |
 | `GET /api/search?q=...`            | Product search                                      |
-| `POST /api/contact-lead`           | ERPNext contact/lead creation                       |
+| `POST /api/contact-lead`           | Save contact enquiry; optional ERPNext forwarding   |
+| `GET /api/admin/contact-enquiries` | Contact submission inbox; no sign-in required        |
 | `GET /api/instagram-reels`         | Fetch Instagram reels                               |
 | `GET /api/refresh-instagram-token` | Refresh Instagram access token                      |
 | `GET /api/reseller`                | Retired: HTTP 410                                   |
@@ -982,7 +989,7 @@ Before deploying production changes, verify:
 - Supabase website order becomes paid after verification
 - Razorpay webhook succeeds
 - Account page displays recent website orders
-- Contact enquiries reach ERPNext
+- Contact enquiries appear in the admin inbox (and ERPNext when configured)
 - Instagram reels load
 - Sitemap and robots endpoints work
 
@@ -1004,7 +1011,7 @@ Because of this, run code-quality and type checks before production deployment r
 
 The live product source is Supabase `public.v_web_products`, accessed through `lib/catalog.ts`. `data/categories.json` supplies category definitions; `data/products.json` is retained as a legacy fixture and is not merged into the live catalogue.
 
-ERPNext supplies referral records through `lib/reseller.ts` and receives contact leads through `app/api/contact-lead/route.ts`. Website orders are stored in Supabase through `lib/website-orders.ts`.
+ERPNext supplies referral records through `lib/reseller.ts` and optionally receives contact leads through `app/api/contact-lead/route.ts`. Contact enquiries are stored in Supabase through `lib/contact-enquiries.ts`, and website orders through `lib/website-orders.ts`.
 
 ---
 

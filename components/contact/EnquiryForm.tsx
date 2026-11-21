@@ -66,6 +66,7 @@ export default function EnquiryForm({ enquiryProduct }: { enquiryProduct: Enquir
   const totalRef = useRef<HTMLSpanElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const submitting = useRef(false);
+  const submission = useRef<{ payload: string; requestId: string } | null>(null);
   const focusAfterReset = useRef(false);
   const invalidField = useRef<string | null>(null);
   const motion = useContactMotion();
@@ -106,6 +107,7 @@ export default function EnquiryForm({ enquiryProduct }: { enquiryProduct: Enquir
   }
 
   function reset() {
+    submission.current = null;
     setRequirement(initial.requirement);
     setSubRequirement(initial.subRequirement);
     setCardTypeMounted(initial.requirement === "Wedding Cards");
@@ -160,8 +162,12 @@ export default function EnquiryForm({ enquiryProduct }: { enquiryProduct: Enquir
       totalBudget: total == null ? "" : String(total), message,
     };
     try {
+      const serialized = JSON.stringify(payload);
+      if (submission.current?.payload !== serialized) {
+        submission.current = { payload: serialized, requestId: crypto.randomUUID() };
+      }
       const response = await fetch("/api/contact-lead", {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...payload, requestId: submission.current.requestId }),
       });
       const result = await response.json().catch(() => null);
       if (!response.ok || result?.success !== true) {

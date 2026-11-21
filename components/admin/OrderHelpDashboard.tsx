@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { BookOpen, Check, CircleAlert, LayoutGrid, LoaderCircle, MessageSquare, Package, RefreshCw, Search } from "lucide-react";
+import { BookOpen, Check, CircleAlert, LayoutGrid, LoaderCircle, Mail, MessageSquare, Package, RefreshCw, Search } from "lucide-react";
 import { ORDER_HELP_STATUSES, ORDER_HELP_TOPICS, type OrderHelpAdminRequest, type OrderHelpStatus } from "@/lib/order-help-types";
 import workspace from "./ItemDashboard.module.css";
 import shared from "./OrderShipping.module.css";
@@ -50,6 +50,7 @@ function HelpShell({ children }: { children: ReactNode }) {
       <Link href="/admin/blogs" className={workspace.navButton}><BookOpen size={18} aria-hidden="true" />Blogs</Link>
       <Link href="/admin/orders" className={workspace.navButton}><Package size={18} aria-hidden="true" />Orders</Link>
       <Link href="/admin/order-help" className={workspace.navActive} aria-current="page"><MessageSquare size={18} aria-hidden="true" />Order help</Link>
+      <Link href="/admin/contact-enquiries" className={workspace.navButton}><Mail size={18} aria-hidden="true" />Contact enquiries</Link>
       <div className={workspace.sidebarNote}><MessageSquare size={19} aria-hidden="true" /><p>Customer questions,<br />kept with their orders.</p></div>
       <div className={workspace.adminLabel}>ADMIN WORKSPACE <span>/admin</span></div>
     </aside>

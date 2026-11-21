@@ -1,0 +1,10 @@
+.customerName { display: block; font-weight: 600; overflow-wrap: anywhere; }
+.requirement { margin-top: 7px; font-size: .9375rem; font-weight: 600; }
+.preview { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; color: var(--muted); font-size: .875rem; margin-top: 5px; line-height: 1.5; }
+.cardMeta { display: block; margin-top: 13px; font-size: .8125rem; color: var(--muted); line-height: 1.7; }
+.metadata dd { overflow-wrap: anywhere; }
+.metadata a { text-decoration: underline; text-underline-offset: 3px; color: var(--primary); }
+.messageSection { padding-top: 22px; }
+.message { white-space: pre-wrap; overflow-wrap: anywhere; padding: 17px 18px; margin-top: 12px; border: 1px solid var(--line-soft); border-radius: 12px; background: var(--paper); color: var(--ink); line-height: 1.7; }
+.filterHint { color: var(--muted); font-size: .8125rem; line-height: 1.6; margin: -6px 0 22px; }
+.stale { display: block; margin-top: 4px; font-size: .8125rem; }

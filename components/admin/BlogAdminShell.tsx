@@ -1,7 +1,7 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { BookOpen, ArrowUpRight, LayoutGrid, PenLine, Package, MessageSquare } from "lucide-react";
+import { BookOpen, ArrowUpRight, LayoutGrid, PenLine, Package, MessageSquare, Mail } from "lucide-react";
 import type { ReactNode, MouseEvent } from "react";
 import styles from "./ItemDashboard.module.css";
 import blogStyles from "./BlogAdmin.module.css";
@@ -60,6 +60,10 @@ export default function BlogAdminShell({
         <Link href="/admin/order-help" className={styles.navButton} onClick={navigate}>
           <MessageSquare size={18} />
           Order help
+        </Link>
+        <Link href="/admin/contact-enquiries" className={styles.navButton} onClick={navigate}>
+          <Mail size={18} />
+          Contact enquiries
         </Link>
         <div className={styles.sidebarNote}>
           <PenLine size={19} />

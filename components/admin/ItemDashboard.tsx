@@ -11,6 +11,7 @@ import {
   FileSpreadsheet,
   LayoutGrid,
   LoaderCircle,
+  Mail,
   MessageSquare,
   Package,
   Pencil,
@@ -464,6 +465,11 @@ export default function ItemDashboard() {
         <a href="/admin/order-help" className={styles.navButton}>
           <MessageSquare size={18} />
           Order help
+        </a>
+        {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+        <a href="/admin/contact-enquiries" className={styles.navButton}>
+          <Mail size={18} />
+          Contact enquiries
         </a>
         <div className={styles.sidebarNote}>
           <span className={styles.statusDot} />
