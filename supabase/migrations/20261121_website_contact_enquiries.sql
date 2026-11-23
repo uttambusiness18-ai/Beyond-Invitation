@@ -33,3 +33,4 @@ GRANT SELECT, INSERT ON public.website_contact_enquiries TO service_role;
 
 NOTIFY pgrst, 'reload schema';
 COMMIT;
+ 
