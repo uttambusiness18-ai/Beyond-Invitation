@@ -1,6 +1,5 @@
 import "server-only";
 
-import { FulfillmentAdminError, getFulfillmentAdmin } from "@/lib/admin-auth";
 import { getSupabaseAuthServerClient } from "@/lib/supabase/auth-server";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { OrderHelpError, helpStatus, helpSubmission, helpTimestamp, helpUuid } from "@/lib/order-help-request";
@@ -31,19 +30,6 @@ function presentAdmin(row: AdminRow): OrderHelpAdminRequest {
     ...present(row), orderReference: `Order #${row.order_id.slice(0, 8).toUpperCase()}`,
     customer: { name: row.order.customer_name, email: row.order.customer_email, phone: row.order.customer_phone },
   };
-}
-
-async function requireHelpAdmin() {
-  try {
-    return await getFulfillmentAdmin();
-  } catch (error) {
-    if (error instanceof FulfillmentAdminError) {
-      throw new OrderHelpError(error.status === 401
-        ? "Sign in to view order help requests."
-        : "Your account does not have staff access to order help requests.", error.status);
-    }
-    throw error;
-  }
 }
 
 export async function createOrderHelpRequest(body: Record<string, unknown>): Promise<OrderHelpRequest> {
@@ -89,7 +75,6 @@ function decodeCursor(cursor: string) {
 }
 
 export async function listOrderHelpRequests(cursor?: string | null): Promise<{ requests: OrderHelpAdminRequest[]; nextCursor: string | null }> {
-  await requireHelpAdmin();
   const after = cursor ? decodeCursor(cursor) : null;
   let query = getSupabaseAdminClient().from(TABLE).select(ADMIN_COLUMNS)
     .order("created_at", { ascending: false }).order("id", { ascending: false }).limit(PAGE_SIZE + 1);
@@ -110,13 +95,14 @@ export async function listOrderHelpRequests(cursor?: string | null): Promise<{ r
 }
 
 export async function updateOrderHelpRequest(orderIdValue: string, idValue: string, body: Record<string, unknown>): Promise<OrderHelpAdminRequest> {
-  const admin = await requireHelpAdmin();
   const orderId = helpUuid(orderIdValue);
   const id = helpUuid(idValue);
   const status = helpStatus(body.status);
   const expectedUpdatedAt = helpTimestamp(body.expectedUpdatedAt);
   const { data, error } = await getSupabaseAdminClient().from(TABLE)
-    .update({ status, updated_by: admin.id })
+    // Admin Order Help is accessible without a staff session. Clear the previous
+    // actor so an anonymous update is never attributed to an earlier editor.
+    .update({ status, updated_by: null })
     .eq("id", id).eq("order_id", orderId).eq("updated_at", expectedUpdatedAt)
     .select(ADMIN_COLUMNS).maybeSingle();
   if (error) throw new Error("Help request status could not be saved.");

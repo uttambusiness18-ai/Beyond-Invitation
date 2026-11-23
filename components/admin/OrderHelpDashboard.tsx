@@ -9,7 +9,6 @@ import workspace from "./ItemDashboard.module.css";
 import shared from "./OrderShipping.module.css";
 import styles from "./OrderHelp.module.css";
 
-const SIGN_IN_URL = "/sign-in?next=%2Fadmin%2Forder-help";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const requestKey = (request: Pick<OrderHelpAdminRequest, "orderId" | "id">) => `${request.orderId}:${request.id}`;
 const topicLabel = (value: string) => ORDER_HELP_TOPICS.find((topic) => topic.value === value)?.label || value;
@@ -68,12 +67,11 @@ function StatusBadge({ value }: { value: OrderHelpStatus }) {
   return <span className={`${shared.badge} ${styles.status}`} data-status={value}>{statusLabel(value)}</span>;
 }
 
-function RequestDetails({ request, loading, onUpdate, onReload, onAccessDenied, onSavingChange }: {
+function RequestDetails({ request, loading, onUpdate, onReload, onSavingChange }: {
   request: OrderHelpAdminRequest;
   loading: boolean;
   onUpdate: (request: OrderHelpAdminRequest) => void;
   onReload: () => Promise<boolean>;
-  onAccessDenied: (status: 401 | 403) => void;
   onSavingChange: (saving: boolean) => void;
 }) {
   const [status, setStatus] = useState(request.status);
@@ -111,10 +109,6 @@ function RequestDetails({ request, loading, onUpdate, onReload, onAccessDenied, 
         body: JSON.stringify({ status, expectedUpdatedAt: request.updatedAt }),
       });
       if (active.current !== controller) return;
-      if (response.status === 401 || response.status === 403) {
-        onAccessDenied(response.status);
-        return;
-      }
       const result = await response.json();
       if (active.current !== controller) return;
       if (!response.ok) {
@@ -187,18 +181,9 @@ export default function OrderHelpDashboard() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [access, setAccess] = useState<401 | 403 | null>(null);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<OrderHelpStatus | "all">("all");
   const active = useRef<AbortController | null>(null);
-
-  const denyAccess = useCallback((status: 401 | 403) => {
-    setRequests([]);
-    setSelectedId(null);
-    setNextCursor(null);
-    setAccess(status);
-    setError(status === 401 ? "Sign in with a staff account to view order help requests." : "Your account does not have staff access to order help requests.");
-  }, []);
 
   const load = useCallback(async (cursor?: string): Promise<boolean> => {
     active.current?.abort();
@@ -211,10 +196,6 @@ export default function OrderHelpDashboard() {
       const query = cursor ? `?${new URLSearchParams({ cursor })}` : "";
       const response = await fetch(`/api/admin/order-help${query}`, { cache: "no-store", credentials: "same-origin", signal: controller.signal });
       if (active.current !== controller) return false;
-      if (response.status === 401 || response.status === 403) {
-        denyAccess(response.status);
-        return false;
-      }
       const result = await response.json();
       if (active.current !== controller) return false;
       if (!response.ok) throw new Error(errorMessage(result, "Order help requests could not be loaded. Please try again."));
@@ -231,7 +212,6 @@ export default function OrderHelpDashboard() {
       });
       setSelectedId((current) => current && (cursor || incoming.some((request) => requestKey(request) === current)) ? current : incoming[0] ? requestKey(incoming[0]) : null);
       setNextCursor(result.nextCursor);
-      setAccess(null);
       return true;
     } catch (caught) {
       if (active.current !== controller) return false;
@@ -245,7 +225,7 @@ export default function OrderHelpDashboard() {
         setLoading(false);
       }
     }
-  }, [denyAccess]);
+  }, []);
 
   useEffect(() => { void load(); return () => { active.current?.abort(); active.current = null; }; }, [load]);
   const filtered = useMemo(() => {
@@ -263,11 +243,6 @@ export default function OrderHelpDashboard() {
       <button type="button" className={shared.secondary} disabled={loading || saving} onClick={() => void load()}><RefreshCw size={17} aria-hidden="true" className={loading ? shared.spin : undefined} />Refresh</button>
     </div>
     {error && <div className={shared.error} role="alert"><CircleAlert size={18} aria-hidden="true" /><span>{error}{requests.length > 0 && <small className={styles.stale}>Showing previously loaded requests.</small>}</span><button type="button" disabled={loading || saving} onClick={() => void load()}>Retry</button></div>}
-    {access ? <div className={shared.empty}>
-      <MessageSquare size={30} aria-hidden="true" /><h2>{access === 401 ? "Staff sign-in required" : "Staff access required"}</h2>
-      <p>{access === 401 ? "Customer requests are available to authorized staff." : "Ask the site owner to grant your account staff access."}</p>
-      <Link href={SIGN_IN_URL} className={shared.primary}>{access === 401 ? "Sign in" : "Use a staff account"}</Link>
-    </div> : <>
       <div className={shared.stats}><div><span>Requests loaded</span><strong>{requests.length}</strong></div><div><span>Open / in progress</span><strong>{unresolved}</strong></div><div><span>Resolved</span><strong>{requests.length - unresolved}</strong></div></div>
       <div className={shared.toolbar}>
         <label className={shared.search}><Search size={18} aria-hidden="true" /><input aria-label="Search loaded help requests" placeholder="Search loaded requests by customer, order or message" value={search} disabled={saving} onChange={(event) => setSearch(event.target.value)} /></label>
@@ -289,9 +264,8 @@ export default function OrderHelpDashboard() {
               {nextCursor && <button type="button" className={shared.secondary} disabled={loading || saving} onClick={() => void load(nextCursor)}>{loading ? "Loading…" : "Load more requests"}</button>}
             </section>
             {selected ? <RequestDetails key={requestKey(selected)} request={selected} loading={loading} onSavingChange={setSaving}
-              onAccessDenied={denyAccess} onReload={() => load()} onUpdate={(updated) => setRequests((current) => current.map((request) => requestKey(request) === requestKey(updated) ? updated : request))} />
+              onReload={() => load()} onUpdate={(updated) => setRequests((current) => current.map((request) => requestKey(request) === requestKey(updated) ? updated : request))} />
               : <div className={shared.empty}><MessageSquare size={26} aria-hidden="true" /><p>Choose a request to view its details.</p></div>}
           </div>}
-    </>}
   </HelpShell>;
 }
