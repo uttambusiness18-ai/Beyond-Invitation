@@ -23,12 +23,17 @@ export const PRICE_BUCKETS = [
   { value: "on-request", label: "Price on request" },
 ] as const;
 export const WEDDING_SORTS = [
+  { value: "newest", label: "Newest first" },
+  { value: "price-asc", label: "Price: low to high" },
+  { value: "price-desc", label: "Price: high to low" },
+] as const;
+const WEDDING_BOX_SORTS = [
   { value: "recommended", label: "Recommended" },
   { value: "price-asc", label: "Price: low to high" },
   { value: "price-desc", label: "Price: high to low" },
   { value: "newest", label: "Newest" },
 ] as const;
-export type WeddingSort = (typeof WEDDING_SORTS)[number]["value"];
+export type WeddingSort = (typeof WEDDING_BOX_SORTS)[number]["value"];
 export type PriceBucket = (typeof PRICE_BUCKETS)[number]["value"];
 export type WeddingFilters = {
   type: "all" | WeddingCardType;
@@ -39,8 +44,22 @@ export type WeddingFilters = {
 export const DEFAULT_WEDDING_FILTERS: WeddingFilters = {
   type: "all",
   price: "any",
+  sort: "newest",
+};
+const DEFAULT_WEDDING_BOX_FILTERS: WeddingFilters = {
+  ...DEFAULT_WEDDING_FILTERS,
   sort: "recommended",
 };
+
+export function weddingSortOptions(collectionType?: WeddingCollectionType) {
+  return collectionType === "boxes" ? WEDDING_BOX_SORTS : WEDDING_SORTS;
+}
+
+export function weddingDefaultFilters(collectionType?: WeddingCollectionType) {
+  return collectionType === "boxes"
+    ? DEFAULT_WEDDING_BOX_FILTERS
+    : DEFAULT_WEDDING_FILTERS;
+}
 export const CARD_TYPES = [
   {
     value: "hindu",
@@ -109,6 +128,7 @@ export function priceBucketFor(price: number): PriceBucket {
 
 export function parseWeddingFilters(
   params: Pick<URLSearchParams, "get">,
+  collectionType?: WeddingCollectionType,
 ): WeddingFilters {
   const type = params.get("type");
   const price = params.get("price");
@@ -120,17 +140,21 @@ export function parseWeddingFilters(
     price: PRICE_BUCKETS.some((item) => item.value === price)
       ? (price as PriceBucket)
       : "any",
-    sort: WEDDING_SORTS.some((item) => item.value === sort)
+    sort: weddingSortOptions(collectionType).some((item) => item.value === sort)
       ? (sort as WeddingSort)
-      : "recommended",
+      : weddingDefaultFilters(collectionType).sort,
   };
 }
 
-export function serializeWeddingFilters(filters: WeddingFilters) {
+export function serializeWeddingFilters(
+  filters: WeddingFilters,
+  collectionType?: WeddingCollectionType,
+) {
   const params = new URLSearchParams();
   if (filters.type !== "all") params.set("type", filters.type);
   if (filters.price !== "any") params.set("price", filters.price);
-  if (filters.sort !== "recommended") params.set("sort", filters.sort);
+  if (filters.sort !== weddingDefaultFilters(collectionType).sort)
+    params.set("sort", filters.sort);
   return params.toString();
 }
 
@@ -140,6 +164,11 @@ export function normalizeWeddingCollectionFilters(
 ): WeddingFilters {
   return {
     ...filters,
+    sort: weddingSortOptions(collectionType).some(
+      (item) => item.value === filters.sort,
+    )
+      ? filters.sort
+      : weddingDefaultFilters(collectionType).sort,
     type: collectionType ? "all" : filters.type,
     price:
       (collectionType ?? filters.type) === "hindu" &&
@@ -153,12 +182,15 @@ export function weddingFiltersFromSearchParams(
   params: WeddingSearchParams,
   collectionType?: WeddingCollectionType,
 ): WeddingFilters {
-  const filters = parseWeddingFilters({
-    get(key) {
-      const value = params[key];
-      return (Array.isArray(value) ? value[0] : value) ?? null;
+  const filters = parseWeddingFilters(
+    {
+      get(key) {
+        const value = params[key];
+        return (Array.isArray(value) ? value[0] : value) ?? null;
+      },
     },
-  });
+    collectionType,
+  );
   return normalizeWeddingCollectionFilters(filters, collectionType);
 }
 

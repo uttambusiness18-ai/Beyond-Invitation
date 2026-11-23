@@ -4,6 +4,7 @@ import { COLLECTION_PAGE_SIZE } from "@/lib/catalog-browse-options";
 import { parsePageNumber } from "@/lib/pagination";
 import { SITE_NAME, getSiteUrl, siteUrl } from "@/lib/site-config";
 import {
+  DEFAULT_WEDDING_FILTERS,
   weddingFiltersFromSearchParams,
   type WeddingProductPage,
   type WeddingSearchParams,
@@ -21,12 +22,12 @@ function pageDetails(params: WeddingSearchParams, resolvedPage?: number) {
     resolvedPage ?? parsePageNumber(params.page, COLLECTION_PAGE_SIZE);
   const query = new URLSearchParams();
   if (filters.price !== "any") query.set("price", filters.price);
-  if (filters.sort !== "recommended") query.set("sort", filters.sort);
+  if (filters.sort !== DEFAULT_WEDDING_FILTERS.sort) query.set("sort", filters.sort);
   if (page > 1) query.set("page", String(page));
   return {
     page,
     path: `${BENGALI_PATH}${query.size ? `?${query}` : ""}`,
-    index: filters.price === "any" && filters.sort === "recommended",
+    index: filters.price === "any" && filters.sort === DEFAULT_WEDDING_FILTERS.sort,
   };
 }
 

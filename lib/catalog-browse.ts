@@ -31,7 +31,7 @@ import {
 import {
   WEDDING_CARD_CATEGORIES,
   PRICE_BUCKETS,
-  DEFAULT_WEDDING_FILTERS,
+  weddingDefaultFilters,
   applyWeddingFilters,
   sortWeddingProducts,
   facetCounts,
@@ -386,7 +386,7 @@ const readWeddingBrowsePage = unstable_cache(
 
 export async function fetchWeddingProductPage({
   collectionType,
-  filters = DEFAULT_WEDDING_FILTERS,
+  filters = weddingDefaultFilters(collectionType),
   offset = 0,
 }: {
   collectionType?: WeddingCollectionType;

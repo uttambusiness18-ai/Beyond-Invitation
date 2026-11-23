@@ -96,12 +96,13 @@ test("Bengali landing metadata is indexable, branded once, and specific in searc
   assert.equal(new URL(String(metadata.openGraph.url), ORIGIN).href, canonical(metadata).href);
 });
 
-test("pagination has self canonicals while tracking, defaults and malformed parameters normalize away", () => {
+test("pagination has self canonicals while newest, legacy recommended and malformed parameters normalize away", () => {
   const { getBengaliMetadata } = harness().load("lib/bengali-wedding-seo.ts");
   const second = getBengaliMetadata({ page: "2", utm_source: "email", gclid: "sample-click" });
   assert.equal(canonical(second).href, `${ORIGIN}${COLLECTION_PATH}?page=2`);
   assert.equal(second.robots.index, true);
   for (const params of [
+    { sort: "newest" },
     { page: "1", price: "any", sort: "recommended", type: "all", utm_source: "email" },
     { page: "-2", price: "invalid", sort: "invalid", type: "hindu", tracking: "ignored" },
     { page: "2junk" }, { page: "999999999999999999999" },
@@ -111,18 +112,28 @@ test("pagination has self canonicals while tracking, defaults and malformed para
     assert.equal(metadata.robots.index, true);
   }
   assert.equal(canonical(getBengaliMetadata({ page: ["2", "3"] })).search, "?page=2");
+  for (const sort of ["newest", "recommended"]) {
+    const metadata = getBengaliMetadata({ page: "2", sort });
+    assert.equal(canonical(metadata).search, "?page=2");
+    assert.equal(metadata.robots.index, true);
+  }
   assert.equal(canonical(getBengaliMetadata({ page: "999" }, 2)).search, "?page=2", "A resolved page must match the rendered catalogue");
 });
 
 test("price and sort variants are noindex follow with canonicals that retain their actual state", () => {
   const { getBengaliMetadata } = harness().load("lib/bengali-wedding-seo.ts");
-  for (const params of [{ price: "25-50" }, { sort: "price-asc" }, { page: "2", price: "on-request", sort: "newest", type: "muslim", utm_source: "email" }]) {
+  for (const [params, expectedQuery] of [
+    [{ price: "25-50" }, "?price=25-50"],
+    [{ sort: "price-asc" }, "?sort=price-asc"],
+    [{ sort: "price-desc" }, "?sort=price-desc"],
+    [{ page: "2", price: "on-request", sort: "newest", type: "muslim", utm_source: "email" }, "?price=on-request&page=2"],
+  ]) {
     const metadata = getBengaliMetadata(params);
     const url = canonical(metadata);
     assert.equal(metadata.robots.index, false);
     assert.equal(metadata.robots.follow, true);
     assert.equal(url.pathname, COLLECTION_PATH);
-    for (const field of ["price", "sort", "page"]) assert.equal(url.searchParams.get(field), params[field] ?? null);
+    assert.equal(url.search, expectedQuery);
     assert.equal(url.searchParams.has("utm_source"), false);
     assert.equal(url.searchParams.has("type"), false);
     assert.equal(new URL(String(metadata.openGraph.url), ORIGIN).href, url.href);

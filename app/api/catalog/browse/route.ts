@@ -12,7 +12,7 @@ import {
 import {
   WEDDING_CARD_CATEGORIES,
   PRICE_BUCKETS,
-  WEDDING_SORTS,
+  weddingSortOptions,
   parseWeddingFilters,
   type WeddingCollectionType,
 } from "@/lib/wedding-cards";
@@ -49,7 +49,7 @@ export async function GET(request: Request) {
   const price = q.get("price"),
     sort = q.get("sort");
   if (mode === "wedding") {
-    const collectionType = q.get("collectionType");
+    const collectionType = q.get("collectionType") as WeddingCollectionType | null;
     const type = q.get("type");
     if (
       (collectionType &&
@@ -59,7 +59,9 @@ export async function GET(request: Request) {
       (type && !["all", ...WEDDING_CARD_CATEGORIES.map((t) => t.value)].includes(type)) ||
       (price &&
         !["any", ...PRICE_BUCKETS.map((p) => p.value)].includes(price)) ||
-      (sort && !WEDDING_SORTS.some((s) => s.value === sort))
+      // Old wedding-card URLs/clients may still request the retired default.
+      // The parser maps it to newest for cards and preserves it for boxes.
+      (sort && sort !== "recommended" && !weddingSortOptions(collectionType ?? undefined).some((s) => s.value === sort))
     )
       return invalid();
     try {
@@ -68,7 +70,7 @@ export async function GET(request: Request) {
           collectionType: (collectionType || undefined) as
             | WeddingCollectionType
             | undefined,
-          filters: parseWeddingFilters(q),
+          filters: parseWeddingFilters(q, collectionType ?? undefined),
           offset,
         }),
         { headers },

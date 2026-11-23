@@ -28,7 +28,8 @@ import {
   normalizeWeddingCollectionFilters,
   parseWeddingFilters,
   serializeWeddingFilters,
-  WEDDING_SORTS,
+  weddingDefaultFilters,
+  weddingSortOptions,
   type WeddingFilters,
   type WeddingCollectionType,
   type WeddingProductPage,
@@ -41,10 +42,10 @@ const secondary =
 type FacetOption = { value: string; label: string; count: number };
 type PageMode = "filter" | "page" | "history";
 
-function writePageUrl(filters: WeddingFilters, pageNumber: number, method: "push" | "replace") {
+function writePageUrl(filters: WeddingFilters, pageNumber: number, method: "push" | "replace", collectionType?: WeddingCollectionType) {
   const query = new URLSearchParams(window.location.search);
   for (const key of ["type", "text", "price", "photos", "sort", "offset", "page"]) query.delete(key);
-  new URLSearchParams(serializeWeddingFilters(filters)).forEach((value, key) => query.set(key, value));
+  new URLSearchParams(serializeWeddingFilters(filters, collectionType)).forEach((value, key) => query.set(key, value));
   if (pageNumber > 1) query.set("page", String(pageNumber));
   const url = `${window.location.pathname}${query.size ? `?${query}` : ""}${window.location.hash}`;
   if (url === `${window.location.pathname}${window.location.search}${window.location.hash}`) return;
@@ -119,8 +120,8 @@ export function WeddingCardsSkeleton({
 
 export default function WeddingCardsBrowser({
   initialPage,
-  initialFilters = DEFAULT_WEDDING_FILTERS,
   collectionType,
+  initialFilters = weddingDefaultFilters(collectionType),
 }: {
   initialPage: WeddingProductPage;
   initialFilters?: WeddingFilters;
@@ -148,7 +149,7 @@ export default function WeddingCardsBrowser({
     pageNumber: number;
     mode: PageMode;
   } | null>(null);
-  const filterKey = serializeWeddingFilters(filters);
+  const filterKey = serializeWeddingFilters(filters, collectionType);
   const [sheetOpen, setSheetOpen] = useState(false);
   const pendingFilters = useRef(filters);
   const motion = useWeddingCardsMotion();
@@ -157,7 +158,8 @@ export default function WeddingCardsBrowser({
   const visibleKey = visible.map((product) => product.slug).join("|");
   const hasFilters = filters.type !== "all" || filters.price !== "any";
   const { listRef: browserRef, restoreSnapshot, saveSnapshot } = useProductListHistory(
-    `wedding-pages:${collectionType ?? "all"}`,
+    // Retire saved recommended-order pages when switching cards to newest.
+    `wedding-pages:${collectionType === "boxes" ? "boxes" : `newest-v2:${collectionType ?? "all"}`}`,
     { page, filters, currentPage },
   );
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -185,7 +187,7 @@ export default function WeddingCardsBrowser({
           total: 0,
         }));
       }
-      const query = new URLSearchParams(serializeWeddingFilters(nextFilters));
+      const query = new URLSearchParams(serializeWeddingFilters(nextFilters, collectionType));
       query.set("mode", "wedding");
       if (collectionType) query.set("collectionType", collectionType);
       query.set("offset", String(offset));
@@ -217,8 +219,8 @@ export default function WeddingCardsBrowser({
         shouldScroll.current = mode === "page";
         setCurrentPage(resolvedPage);
         setPage({ ...result, products: [...unique.values()] });
-        if (mode === "page") writePageUrl(nextFilters, resolvedPage, "push");
-        else if (resolvedPage !== pageNumber) writePageUrl(nextFilters, resolvedPage, "replace");
+        if (mode === "page") writePageUrl(nextFilters, resolvedPage, "push", collectionType);
+        else if (resolvedPage !== pageNumber) writePageUrl(nextFilters, resolvedPage, "replace", collectionType);
       } catch {
         if (controller.signal.aborted || request.current !== controller) return;
         failedRequest.current = { filters: nextFilters, pageNumber, mode };
@@ -246,7 +248,7 @@ export default function WeddingCardsBrowser({
     setCurrentPage(currentPageRef.current);
     shouldScroll.current = false;
     if (parsePageNumber(new URLSearchParams(window.location.search).get("page")) !== currentPageRef.current) {
-      writePageUrl(next, currentPageRef.current, "replace");
+      writePageUrl(next, currentPageRef.current, "replace", collectionType);
     }
     setLoading(null);
     setError("");
@@ -254,7 +256,7 @@ export default function WeddingCardsBrowser({
       request.current?.abort();
       request.current = null;
     };
-  }, [initialPage, initialFilters, normalizeFilters, restoreSnapshot]);
+  }, [initialPage, initialFilters, normalizeFilters, restoreSnapshot, collectionType]);
   useLayoutEffect(() => {
     const browser = browserRef.current;
     if (!browser) return;
@@ -293,12 +295,12 @@ export default function WeddingCardsBrowser({
         return;
       }
       const next = normalizeFilters(
-        parseWeddingFilters(new URLSearchParams(window.location.search)),
+        parseWeddingFilters(new URLSearchParams(window.location.search), collectionType),
       );
       const pageNumber = parsePageNumber(new URLSearchParams(window.location.search).get("page"));
       if (
-        serializeWeddingFilters(next) ===
-        serializeWeddingFilters(pendingFilters.current) && pageNumber === currentPageRef.current
+        serializeWeddingFilters(next, collectionType) ===
+        serializeWeddingFilters(pendingFilters.current, collectionType) && pageNumber === currentPageRef.current
       )
         return;
       pendingFilters.current = next;
@@ -307,7 +309,7 @@ export default function WeddingCardsBrowser({
     };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
-  }, [normalizeFilters, requestPage, restoreSnapshot]);
+  }, [normalizeFilters, requestPage, restoreSnapshot, collectionType]);
 
   useEffect(() => {
     const sheet = sheetRef.current,
@@ -376,8 +378,8 @@ export default function WeddingCardsBrowser({
   function update(patch: Partial<WeddingFilters>) {
     const next = normalizeFilters({ ...pendingFilters.current, ...patch });
     if (
-      serializeWeddingFilters(next) ===
-      serializeWeddingFilters(pendingFilters.current)
+      serializeWeddingFilters(next, collectionType) ===
+      serializeWeddingFilters(pendingFilters.current, collectionType)
     )
       return;
     if (!request.current && !error) saveSnapshot();
@@ -385,7 +387,7 @@ export default function WeddingCardsBrowser({
     setFilters(next);
     currentPageRef.current = 1;
     setCurrentPage(1);
-    writePageUrl(next, 1, "push");
+    writePageUrl(next, 1, "push", collectionType);
     void requestPage(next);
   }
 
@@ -498,7 +500,7 @@ export default function WeddingCardsBrowser({
                 }
                 className="w-auto max-w-full [&_select]:h-11 [&_select]:cursor-pointer [&_select]:rounded-none [&_select]:border-0 [&_select]:bg-transparent [&_select]:py-2 [&_select]:pl-0 [&_select]:pr-5 [&_select]:font-semibold [&_select]:text-carbon [&_svg]:right-0 [&_svg]:size-3.5"
               >
-                {WEDDING_SORTS.map((option) => (
+                {weddingSortOptions(collectionType).map((option) => (
                   <NativeSelectOption key={option.value} value={option.value}>
                     {option.label}
                   </NativeSelectOption>
