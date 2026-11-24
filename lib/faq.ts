@@ -35,6 +35,12 @@ export const faqItems: FaqItem[] = [
     links: [{ label: "Discuss personalisation", href: "/contact" }],
   },
   {
+    id: "upload-printing-matter",
+    question: "Where can I upload my printing matter or design?",
+    answer: "After payment is confirmed, choose Upload printing matter on your order confirmation page or under a paid order in My Account. You can upload PDF, Word (.docx), JPG or PNG files, up to 20 MB each and 10 files per order, with instructions for our team. If you checked out as a guest, save the private order and upload link from your confirmation page to return later. Uploads are for review; our team will confirm printing costs and your final proof separately.",
+    links: [{ label: "View account orders", href: "/account#orders" }],
+  },
+  {
     id: "see-samples",
     question: "Can I see a sample before placing an order?",
     answer: "You can compare wedding card samples, materials, printing and finishes at our Kolkata showroom. If you cannot visit, contact us with the design you like to discuss available sample or preview options before ordering.",

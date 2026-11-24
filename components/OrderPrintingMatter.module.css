@@ -1,0 +1,62 @@
+.panel { min-width: 0; margin: 0 0 20px; color: #2a1810; border: 1px solid #e5d9c7; border-radius: 14px; background: #fffdf9; overflow: hidden; }
+.toggle { display: flex; align-items: center; gap: 12px; width: 100%; padding: 20px; text-align: left; }
+.icon { flex: 0 0 auto; display: grid; place-items: center; width: 42px; height: 42px; color: #7b1c2e; background: #f6eddf; border: 1px solid #eadbc3; border-radius: 11px; }
+.toggleText { min-width: 0; flex: 1; }
+.toggleText strong { display: block; color: #6c2633; font-size: 16px; font-weight: 600; line-height: 1.4; }
+.toggleText small { display: block; color: #776353; font-size: 13px; line-height: 1.5; margin-top: 3px; }
+.chevron { flex: 0 0 auto; color: #987545; transition: transform .2s; }
+.toggle[aria-expanded="true"] .chevron { transform: rotate(180deg); }
+.body { border-top: 1px solid #ede3d7; padding: 20px; }
+.body[hidden] { display: none; }
+.intro { margin: 0 0 18px; color: #6f5847; font-size: 14px; line-height: 1.65; }
+.form { display: grid; gap: 17px; }
+.fileLabel, .label { display: grid; gap: 8px; color: #50372b; font-size: 14px; font-weight: 600; }
+.fileLabel { border: 1px dashed #cbb38a; background: #fbf7ef; border-radius: 11px; padding: 18px; }
+.fileLabel > span { display: flex; align-items: center; gap: 8px; }
+.fileInput { display: block; width: 100%; min-width: 0; color: #6f5847; font-size: 13px; font-weight: 400; overflow: hidden; }
+.fileInput::file-selector-button { background: white; color: #7b1c2e; border: 1px solid #d9c7ad; border-radius: 7px; padding: 9px 12px; margin: 0 10px 5px 0; font: inherit; font-weight: 600; cursor: pointer; }
+.hint { display: block; font-size: 12px; font-weight: 400; color: #806c5b; line-height: 1.6; }
+.label textarea { display: block; width: 100%; min-width: 0; min-height: 96px; resize: vertical; padding: 12px; border: 1px solid #d9cdbc; border-radius: 9px; background: white; color: #2a1810; font-size: 15px; line-height: 1.6; font-weight: 400; }
+.label textarea::placeholder { color: #8a796a; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.primary, .secondary, .download { display: inline-flex; justify-content: center; align-items: center; gap: 8px; min-height: 42px; padding: 10px 16px; font-size: 13px; font-weight: 600; border: 1px solid #d9c7ad; border-radius: 8px; color: #7b1c2e; background: #fffdf9; }
+.primary { background: #7b1c2e; color: white; border-color: #7b1c2e; }
+.primary:hover { background: #621528; }
+.secondary:hover, .download:hover { background: #f8efdf; }
+.panel button:disabled, .admin button:disabled { opacity: .55; cursor: wait; }
+.panel :is(button, input, textarea):focus-visible, .admin :is(button, a):focus-visible { outline: 3px solid #c9a84c; outline-offset: 3px; }
+.notice, .error, .success { padding: 12px 14px; margin: 0 0 16px; border-radius: 9px; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.notice { border: 1px solid #e8dbc2; background: #f8f0df; color: #745c35; }
+.error { border: 1px solid #ecc8c1; background: #fcf0ec; color: #8b1e2d; }
+.success { border: 1px solid #d1e3cc; background: #f0f7ec; color: #365834; }
+.error p, .success p { margin: 0; }
+.error button { margin-top: 8px; text-decoration: underline; text-underline-offset: 3px; font-weight: 600; }
+.progress { margin: 0; color: #6f5847; font-size: 13px; }
+.progress progress { display: block; margin-top: 8px; width: 100%; height: 7px; border: none; border-radius: 6px; overflow: hidden; accent-color: #7b1c2e; background: #eee4d6; }
+.progress progress::-webkit-progress-bar { background: #eee4d6; }
+.progress progress::-webkit-progress-value { background: #7b1c2e; }
+.progress progress::-moz-progress-bar { background: #7b1c2e; }
+.history { border-top: 1px solid #ede3d7; margin-top: 24px; padding-top: 18px; }
+.historyHeading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 13px; }
+.historyHeading h3 { color: #50372b; font-size: 14px; font-weight: 600; margin: 0; }
+.refresh { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: #7b1c2e; min-height: 32px; padding: 4px 0; }
+.empty { color: #806c5b; font-size: 13px; line-height: 1.6; padding: 3px 0; }
+.files { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.file { min-width: 0; border: 1px solid #e9e0d5; border-radius: 10px; padding: 14px; background: #fff; }
+.fileTop { display: flex; gap: 12px; align-items: flex-start; }
+.fileIcon { color: #9b7746; flex: 0 0 auto; margin-top: 3px; }
+.fileInfo { flex: 1; min-width: 0; }
+.fileName { display: block; color: #54382c; font-size: 14px; font-weight: 600; overflow-wrap: anywhere; line-height: 1.5; }
+.fileMeta { margin-top: 4px; font-size: 12px; line-height: 1.6; color: #877361; }
+.fileNotes { font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.65; color: #6f5847; margin-top: 12px; padding-top: 10px; border-top: 1px solid #f0e9e0; }
+.fileNotes strong { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 4px; color: #8a725b; }
+.download { min-height: 36px; padding: 7px 10px; font-size: 12px; flex: 0 0 auto; }
+.admin { margin-top: 24px; padding-top: 22px; border-top: 1px solid #e5d9c7; }
+.admin h3 { color: #50372b; font-size: 16px; font-weight: 600; }
+.adminIntro { color: #6f5847; font-size: 13px; line-height: 1.6; margin: 8px 0 14px; }
+.adminSignIn { color: #7b1c2e; text-decoration: underline; text-underline-offset: 3px; }
+.spin { animation: printing-spin 1s linear infinite; }
+@keyframes printing-spin { to { transform: rotate(360deg); } }
+@media (max-width: 480px) { .toggle, .body { padding: 16px; } .toggle { gap: 9px; } .icon { width: 35px; height: 39px; } .toggleText strong { font-size: 15px; } .fileTop { flex-wrap: wrap; gap: 8px; } .fileInfo { flex-basis: calc(100% - 30px); } .download { margin-left: 27px; } .actions .primary { width: 100%; } .fileLabel { padding: 14px; } }
+@media (prefers-reduced-motion: reduce) { .spin { animation: none; } .chevron { transition: none; } }
+@media print { .panel, .admin { display: none; } }

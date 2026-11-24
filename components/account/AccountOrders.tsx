@@ -8,6 +8,7 @@ import { formatProductName } from "@/lib/product-name";
 import { useAccountMotion } from "./AccountMotion";
 import OrderTracking from "./OrderTracking";
 import OrderHelpModal from "./OrderHelpModal";
+import OrderPrintingMatter from "@/components/OrderPrintingMatter";
 import { cardClass, focusClass, linkClass, secondaryClass, SectionHeading } from "./AccountUI";
 
 function OrderRow({ order }: { order: AccountOrder }) {
@@ -53,6 +54,7 @@ function OrderRow({ order }: { order: AccountOrder }) {
         </div>
       </div>
       {order.status === "paid" && <OrderTracking orderId={order.id} />}
+      {order.status === "paid" && <div className="mb-5"><OrderPrintingMatter orderId={order.id} /></div>}
     </li>
   );
 }

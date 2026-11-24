@@ -7,6 +7,7 @@ import { BookOpen, Check, CircleAlert, LayoutGrid, LoaderCircle, Mail, MessageSq
 import type { FulfillmentOrder, FulfillmentState, ShipmentPackage, QuickFulfillmentQuote, QuickBookingState } from "@/lib/fulfillment-types";
 import workspace from "./ItemDashboard.module.css";
 import styles from "./OrderShipping.module.css";
+import OrderPrintingFiles from "./OrderPrintingFiles";
 
 const states: Record<FulfillmentState, string> = {
   not_created: "Ready to prepare",
@@ -274,6 +275,8 @@ function OrderDetails({ order, onUpdate, onReload, canManageShipments }: {
       {order.shippingAmountPaise !== null && <div><span>Shipping collected</span><strong>{money(order.shippingAmountPaise, order.currency)}</strong></div>}
     </div>
     {order.notes && <div className={styles.notes}><h3>Customer notes</h3><p>{order.notes}</p></div>}
+
+    <OrderPrintingFiles key={order.id} orderId={order.id} canManageFiles={canManageShipments} />
 
     {error && <p className={styles.error} role="alert"><CircleAlert size={18} />{error}</p>}
     {success && <p className={styles.success} role="status"><Check size={18} />{success}</p>}

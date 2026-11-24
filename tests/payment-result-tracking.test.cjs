@@ -50,6 +50,7 @@ async function resultHarness(t, {
     "next/link": { default: ({ children, prefetch, ...attributes }) => h("a", attributes, children) },
     "./PaymentResult.module.css": { default: {} },
     "@/components/usePrivateTrackingToken": { usePrivateTrackingToken: () => ({ ready: true, token: null }) },
+    "@/components/OrderPrintingMatter": { default: () => null },
     "@/lib/order-tracking-link": { privateTrackingLink: () => null },
     "@/lib/payment-attempt": { readPaymentAttempt: () => null },
     "@/lib/google-tracking": { trackPurchaseConversion: value => { conversions.push(value); return false; } },

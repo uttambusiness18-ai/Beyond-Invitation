@@ -60,6 +60,12 @@ Signed-in wishlists are stored in Supabase `public.wishlist_items`, protected by
 
 `/my-orders` provides a contact link for order enquiries. Customer order history is not publicly accessible.
 
+### Printing matter uploads
+
+After payment, customers can upload printing matter from the confirmation page or a paid order in My Account. Guest customers can save a private order and upload link. PDF, DOCX, JPG and PNG files are supported, up to 20 MB each and ten files per order, with optional instructions. Staff can download the files from the selected order in `/admin/orders` after signing in with staff access. Files remain private; delivery tracking links do not grant access to them. Uploading is not final print approval.
+
+Apply the database and private Storage bucket migration before deploying this feature. See [Printing matter setup](supabase/PRINTING_MATTER_SETUP.md).
+
 ### Reseller / referral pricing
 
 The application includes a reseller system backed by the ERPNext doctype:
