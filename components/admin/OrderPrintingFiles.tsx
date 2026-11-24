@@ -1,17 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { RefreshCw } from "lucide-react";
 import type { PrintingFile } from "@/lib/order-printing-types";
 import { isPrintingFile, openPrintingDownload, PrintingFileList } from "@/components/OrderPrintingMatter";
 import styles from "@/components/OrderPrintingMatter.module.css";
 
-export default function OrderPrintingFiles(props: { orderId: string; canManageFiles: boolean }) {
-  return <OrderPrintingFilesPanel key={`${props.orderId}:${props.canManageFiles}`} {...props} />;
+export default function OrderPrintingFiles(props: { orderId: string }) {
+  return <OrderPrintingFilesPanel key={props.orderId} {...props} />;
 }
 
-function OrderPrintingFilesPanel({ orderId, canManageFiles }: { orderId: string; canManageFiles: boolean }) {
+function OrderPrintingFilesPanel({ orderId }: { orderId: string }) {
   const [files, setFiles] = useState<PrintingFile[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -22,7 +21,7 @@ function OrderPrintingFilesPanel({ orderId, canManageFiles }: { orderId: string;
   const endpoint = `/api/admin/orders/${encodeURIComponent(orderId)}/printing-matter`;
 
   const load = useCallback(async () => {
-    if (!canManageFiles || active.current) return;
+    if (active.current) return;
     const controller = new AbortController();
     active.current = controller; setBusy(true); setError("");
     const timeout = setTimeout(() => controller.abort(), 20_000);
@@ -38,7 +37,7 @@ function OrderPrintingFilesPanel({ orderId, canManageFiles }: { orderId: string;
       clearTimeout(timeout);
       if (active.current === controller) { active.current = null; if (alive.current) setBusy(false); }
     }
-  }, [canManageFiles, endpoint]);
+  }, [endpoint]);
 
   useEffect(() => {
     alive.current = true;
@@ -47,7 +46,7 @@ function OrderPrintingFilesPanel({ orderId, canManageFiles }: { orderId: string;
   }, [load]);
 
   async function download(file: PrintingFile) {
-    if (!canManageFiles || active.current) return;
+    if (active.current) return;
     const controller = new AbortController();
     active.current = controller; setBusy(true); setError(""); setDownloadingId(file.id);
     const timeout = setTimeout(() => controller.abort(), 20_000);
@@ -72,13 +71,11 @@ function OrderPrintingFilesPanel({ orderId, canManageFiles }: { orderId: string;
 
   return <section className={styles.admin} aria-label="Customer printing matter" aria-busy={busy}>
     <div className={styles.historyHeading}><h3>Printing matter{loaded ? ` (${files.length})` : ""}</h3>
-      {canManageFiles && <button type="button" className={styles.refresh} disabled={busy} onClick={() => void load()}><RefreshCw size={14} className={busy && !downloadingId ? styles.spin : undefined} aria-hidden="true" />{busy && !downloadingId ? "Loading…" : "Refresh files"}</button>}
+      <button type="button" className={styles.refresh} disabled={busy} onClick={() => void load()}><RefreshCw size={14} className={busy && !downloadingId ? styles.spin : undefined} aria-hidden="true" />{busy && !downloadingId ? "Loading…" : "Refresh files"}</button>
     </div>
-    <p className={styles.adminIntro}>Customer wording and artwork for this order. These are submitted files; confirm the final printing proof with the customer.</p>
-    {!canManageFiles ? <p className={styles.adminIntro}><Link href="/sign-in?next=%2Fadmin%2Forders" className={styles.adminSignIn}>Sign in with a staff account to view printing files.</Link></p> : <>
-      {error && <p role="alert" className={styles.error}>{error}</p>}
-      {loaded && (files.length ? <PrintingFileList files={files} downloadingId={downloadingId} disabled={busy} onDownload={file => void download(file)} /> : <p className={styles.empty}>No printing files have been submitted for this order.</p>)}
-      {!loaded && busy && <p role="status" className={styles.empty}>Loading customer files…</p>}
-    </>}
+    <p className={styles.adminIntro}>Optional customer wording and artwork for this order. Download the files and read their instructions below. For printed orders, confirm the final proof with the customer.</p>
+    {error && <p role="alert" className={styles.error}>{error}</p>}
+    {loaded && (files.length ? <PrintingFileList files={files} downloadingId={downloadingId} disabled={busy} onDownload={file => void download(file)} /> : <p className={styles.empty}>No printing files have been submitted. The customer may want cards without printing or may upload files later.</p>)}
+    {!loaded && busy && <p role="status" className={styles.empty}>Loading customer files…</p>}
   </section>;
 }

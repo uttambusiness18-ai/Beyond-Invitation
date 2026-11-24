@@ -2,11 +2,13 @@
 
 Customers can attach printing matter to a **paid** website order from its confirmation page or My Account. This is an upload and review handoff; it does not approve artwork, purchase printing, change a payment, or start production.
 
+Uploads are optional. Customers buying cards without printing can skip the upload entirely; checkout and shipping do not require a file. No files submitted does not establish a printing preference: the customer could also be planning to upload later.
+
 ## Setup
 
 1. Apply `supabase/migrations/20261124_website_order_printing_files.sql` as the database owner in the same Supabase project as `website_orders`.
 2. Keep the existing server-only `SUPABASE_SECRET_KEY` or `SUPABASE_SERVICE_ROLE_KEY` configured. The browser never receives this key.
-3. Staff use the existing admin role or `ADMIN_USER_IDS` allowlist. The new printing-file list and download endpoints always require staff access, even where the surrounding order dashboard currently permits viewing without sign-in.
+3. Printing-file viewing and downloads follow the existing admin order dashboard: no staff sign-in is required. Anyone who can access these admin endpoints can list and download submitted files for an order. Customer upload access still requires account ownership or the private receipt link.
 4. Deploy the application and check the flows below. The feature shows a recoverable unavailable message until its database migration and private bucket are installed.
 
 The migration creates `public.website_order_printing_files`, two service-role-only reservation/completion functions, and a **private** `website_order_printing` Storage bucket. It does not make other buckets private. A restrictive Storage policy prevents normal anonymous/authenticated clients from reading or writing this bucket even if older, broad policies exist.
@@ -35,7 +37,7 @@ Orders with no subsequent upload attempt may retain expired objects. For periodi
 - On a paid order, upload a supported file from confirmation; reload and confirm its name, instructions and submitted time remain visible. Download it and compare its contents.
 - Repeat through My Account. A guest receipt link should work without account creation.
 - Confirm that a different account, a tracking-only token and an unpaid order cannot list, upload or download files.
-- Staff can retrieve the same attachment from `/admin/orders`. An anonymous user or non-staff account cannot use either new admin endpoint.
+- Open `/admin/orders` without signing in, select an order, and confirm that its printing files and instructions load and the download buttons work. Admin downloads must still use short-lived attachment links scoped to the selected order.
 - Reject files over 20 MB, empty files, renamed executables/ZIP archives, corrupted signatures and macro-enabled Word documents.
 - Retry completion after a dropped response; it must return the original file instead of creating another submission. Cancellation must never delete a completed file.
 - Submit concurrent preparations: the database serializes quota changes and permits at most 10 submitted/active reservations. Expired or cancelled uploads cannot later be completed.

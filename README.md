@@ -62,7 +62,7 @@ Signed-in wishlists are stored in Supabase `public.wishlist_items`, protected by
 
 ### Printing matter uploads
 
-After payment, customers can upload printing matter from the confirmation page or a paid order in My Account. Guest customers can save a private order and upload link. PDF, DOCX, JPG and PNG files are supported, up to 20 MB each and ten files per order, with optional instructions. Staff can download the files from the selected order in `/admin/orders` after signing in with staff access. Files remain private; delivery tracking links do not grant access to them. Uploading is not final print approval.
+After payment, customers can optionally upload printing matter from the confirmation page or a paid order in My Account. Guest customers can save a private order and upload link. PDF, DOCX, JPG and PNG files are supported, up to 20 MB each and ten files per order, with optional instructions. Printing files can be viewed and downloaded from the selected order in `/admin/orders` without signing in, matching the existing admin order dashboard. Storage uses a private bucket and short-lived download URLs; customer upload access requires account ownership or the receipt link. Uploading is not final print approval.
 
 Apply the database and private Storage bucket migration before deploying this feature. See [Printing matter setup](supabase/PRINTING_MATTER_SETUP.md).
 

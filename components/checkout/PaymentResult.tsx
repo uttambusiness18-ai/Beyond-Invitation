@@ -564,11 +564,11 @@ export default function PaymentResult({ outcome, orderId, paymentId }: Props) {
                     <li>
                       <span>01</span>
                       <div>
-                        <h3>Make it yours</h3>
+                        <h3>Printing, if needed</h3>
                         <p>
-                          Upload your printing matter above. Our team will
-                          confirm printing requirements, costs and your design
-                          proof with you.
+                          Buying cards without printing? No upload is needed.
+                          For printing, use the optional upload above; our team
+                          will confirm the charges and final proof with you.
                         </p>
                       </div>
                     </li>
@@ -577,8 +577,8 @@ export default function PaymentResult({ outcome, orderId, paymentId }: Props) {
                       <div>
                         <h3>Made with care</h3>
                         <p>
-                          Once the details are approved, we’ll prepare your
-                          order.
+                          We’ll prepare your cards for dispatch. If you requested
+                          printing, we’ll first confirm your final proof with you.
                         </p>
                       </div>
                     </li>
@@ -705,11 +705,11 @@ export default function PaymentResult({ outcome, orderId, paymentId }: Props) {
                 <section className={styles.saveLink}>
                   <div className={styles.headingWithIcon}>
                     <FileText size={18} aria-hidden="true" />
-                    <h2>Come back to your printing matter</h2>
+                    <h2>Save your order link</h2>
                   </div>
                   <p>
-                    Save this link to upload files later and view your order,
-                    even without an account.
+                    View your order or return later to upload printing matter
+                    if needed, even without an account.
                   </p>
                   <button
                     type="button"

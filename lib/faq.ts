@@ -35,9 +35,14 @@ export const faqItems: FaqItem[] = [
     links: [{ label: "Discuss personalisation", href: "/contact" }],
   },
   {
+    id: "cards-without-printing",
+    question: "Can I buy cards without printing?",
+    answer: "Yes. You can order cards without printing and complete checkout as usual. Uploading printing matter is optional, so you can skip it. If you need printing, our team will confirm the additional cost and final proof with you separately.",
+  },
+  {
     id: "upload-printing-matter",
     question: "Where can I upload my printing matter or design?",
-    answer: "After payment is confirmed, choose Upload printing matter on your order confirmation page or under a paid order in My Account. You can upload PDF, Word (.docx), JPG or PNG files, up to 20 MB each and 10 files per order, with instructions for our team. If you checked out as a guest, save the private order and upload link from your confirmation page to return later. Uploads are for review; our team will confirm printing costs and your final proof separately.",
+    answer: "If you need printing, choose Upload printing matter on your order confirmation page or under a paid order in My Account after payment is confirmed. This is optional for customers buying cards without printing. You can upload PDF, Word (.docx), JPG or PNG files, up to 20 MB each and 10 files per order, with instructions for our team. If you checked out as a guest, save the private order and upload link from your confirmation page to return later. Uploads are for review; our team will confirm printing costs and your final proof separately.",
     links: [{ label: "View account orders", href: "/account#orders" }],
   },
   {

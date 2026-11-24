@@ -5,7 +5,6 @@ import { inflateRawSync } from "node:zlib";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getPaymentReceipt } from "@/lib/payment-receipt";
-import { getFulfillmentAdmin } from "@/lib/admin-auth";
 import { OrderPrintingError, printingUploadMetadata, printingUuid } from "@/lib/order-printing-request";
 import { PRINTING_CONTENT_TYPES, PRINTING_MAX_FILE_BYTES, type PrintingFile } from "@/lib/order-printing-types";
 
@@ -236,11 +235,10 @@ export async function customerPrintingAction(
 }
 
 export async function listAdminPrintingFiles(orderId: unknown) {
-  await getFulfillmentAdmin();
+  // Match the existing admin order dashboard's access model.
   return listFiles(getSupabaseAdminClient(), printingUuid(orderId));
 }
 
 export async function downloadAdminPrintingFile(orderId: unknown, fileId: unknown) {
-  await getFulfillmentAdmin();
   return downloadFile(getSupabaseAdminClient(), printingUuid(orderId), printingUuid(fileId));
 }

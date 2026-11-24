@@ -166,15 +166,26 @@ test("switching orders aborts the old request and discards late files", async t 
   assert.equal(ui.container.querySelector('[aria-expanded]').getAttribute("aria-expanded"), "false");
 });
 
-test("staff files require staff permission before requesting data", async t => {
-  const ui = await harness(t, { admin: true, props: { orderId: ORDER, canManageFiles: false } });
-  assert.equal(ui.requests.length, 0);
-  assert.match(ui.container.textContent, /Sign in with a staff account/);
+test("admin files load and download without a staff sign-in gate", async t => {
+  const opened = [];
+  t.mock.method(dom.window.HTMLAnchorElement.prototype, "click", function () {
+    opened.push({ href: this.href, download: this.download, rel: this.rel });
+  });
+  const ui = await harness(t, { admin: true, props: { orderId: ORDER }, respond: async (_url, _options, body) =>
+    reply(body?.action === "download" ? { url: "https://storage.example.test/attachment" } : { files: [saved] }),
+  });
+  assert.ok(ui.requests.length > 0);
+  assert.match(ui.container.textContent, /wording.pdf/);
+  assert.doesNotMatch(ui.container.textContent, /Sign in/);
+  assert.ok(ui.requests.every(item => item.url === `/api/admin/orders/${ORDER}/printing-matter`));
+  await ui.click("Download");
+  assert.deepEqual(ui.requests.at(-1).body, { action: "download", fileId: FILE });
+  assert.deepEqual(opened, [{ href: "https://storage.example.test/attachment", download: "wording.pdf", rel: "noopener noreferrer" }]);
 });
 
-test("staff StrictMode cleanup cannot overwrite the latest load with an aborted error", async t => {
+test("admin StrictMode cleanup cannot overwrite the latest load with an aborted error", async t => {
   const pending = [];
-  const ui = await harness(t, { admin: true, props: { orderId: ORDER, canManageFiles: true }, respond: () => new Promise(resolve => pending.push(resolve)) });
+  const ui = await harness(t, { admin: true, props: { orderId: ORDER }, respond: () => new Promise(resolve => pending.push(resolve)) });
   assert.equal(pending.length, 2);
   assert.equal(ui.requests[0].options.signal.aborted, true);
   await act(() => pending[1](reply({ files: [saved] })));

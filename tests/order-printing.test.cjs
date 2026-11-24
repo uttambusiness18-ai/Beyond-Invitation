@@ -198,18 +198,15 @@ test("printing APIs reject foreign/missing origins and malformed or oversized JS
   }
 });
 
-test("staff printing list and download require an authenticated admin", async () => {
-  for (const user of [null, { id: USER_ID, app_metadata: {} }]) {
-    const h = harness({ user });
-    const response = await adminRoute(h).GET(new Request(`${ORIGIN}/api/admin/orders/${ORDER_ID}/printing-matter`), params());
-    assert.equal(response.status, user ? 403 : 401);
-    assert.deepEqual(h.queries, []);
-    assert.deepEqual(h.storageCalls, []);
-    const download = await adminRoute(h).POST(request({ action: "download", fileId: FILE_ID }), params());
-    assert.equal(download.status, user ? 403 : 401);
-    assert.deepEqual(h.queries, []);
-    assert.deepEqual(h.storageCalls, []);
-  }
+test("admin printing list works without a sign-in session or an auth lookup", async () => {
+  const h = harness({ adminResults: [result([])] });
+  const response = await adminRoute(h).GET(new Request(`${ORIGIN}/api/admin/orders/${ORDER_ID}/printing-matter`), params());
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { files: [] });
+  assert.deepEqual(h.authCalls, []);
+  assert.deepEqual(h.queries[0].calls.filter(([method]) => method === "eq"), [["eq", "order_id", ORDER_ID], ["eq", "state", "ready"]]);
+  assert.match(response.headers.get("cache-control"), /private.*no-store/);
+  assert.deepEqual(h.storageCalls, []);
 });
 
 test("prepare reserves an order-scoped immutable upload and never accepts a client storage path", async () => {
@@ -346,15 +343,35 @@ test("cancelled and expired uploads cannot be completed; submitted history canno
   assert.deepEqual(h.storageCalls, []);
 });
 
-test("staff can retrieve private printing files through the existing server-managed admin role", async () => {
+test("admin can list and download private printing files without signing in", async () => {
   const ready = fileRow({ state: "ready", completed_at: "2026-11-24T08:03:00Z" });
-  const h = harness({ user: { id: USER_ID, app_metadata: { role: "admin" } }, adminResults: [result([ready]), result(ready)],
-    storageResults: { createSignedUrl: [result({ signedUrl: "https://storage.example.test/staff-attachment" })] } });
+  const h = harness({ adminResults: [result([ready]), result(ready)],
+    storageResults: { createSignedUrl: [result({ signedUrl: "https://storage.example.test/admin-attachment" })] } });
   const listed = await adminRoute(h).GET(new Request(`${ORIGIN}/api/admin/orders/${ORDER_ID}/printing-matter`), params());
   assert.equal(listed.status, 200);
   assert.equal((await listed.json()).files[0].id, FILE_ID);
   const download = await adminRoute(h).POST(request({ action: "download", fileId: FILE_ID }), params());
   assert.equal(download.status, 200);
-  assert.deepEqual(h.authCalls, ["getUser", "getUser"]);
+  assert.deepEqual(await download.json(), { url: "https://storage.example.test/admin-attachment" });
+  assert.deepEqual(h.authCalls, []);
+  assert.deepEqual(h.queries[1].calls.filter(([method]) => method === "eq"), [["eq", "order_id", ORDER_ID], ["eq", "id", FILE_ID]]);
   assert.deepEqual(h.storageCalls[0].args, [ready.storage_path, 60, { download: ready.file_name }]);
+});
+
+test("admin downloads still reject cross-origin requests, unfinished files and files outside the selected order", async () => {
+  for (const origin of [null, "https://foreign.test"]) {
+    const h = harness();
+    const response = await adminRoute(h).POST(request({ action: "download", fileId: FILE_ID }, { origin }), params());
+    assert.equal(response.status, 403);
+    assert.deepEqual(h.authCalls, []);
+    assert.deepEqual(h.queries, []);
+    assert.deepEqual(h.storageCalls, []);
+  }
+  const h = harness({ adminResults: [result(null)] });
+  assert.equal((await adminRoute(h).POST(request({ action: "download", fileId: FILE_ID }), params())).status, 404);
+  assert.deepEqual(h.queries[0].calls.filter(([method]) => method === "eq"), [["eq", "order_id", ORDER_ID], ["eq", "id", FILE_ID]]);
+  assert.deepEqual(h.storageCalls, []);
+  const pending = harness({ adminResults: [result(fileRow())] });
+  assert.equal((await adminRoute(pending).POST(request({ action: "download", fileId: FILE_ID }), params())).status, 409);
+  assert.deepEqual(pending.storageCalls, []);
 });

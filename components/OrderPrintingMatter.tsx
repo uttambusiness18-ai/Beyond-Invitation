@@ -242,11 +242,11 @@ function OrderPrintingMatterForm({ orderId, receiptToken }: Props) {
   return <section className={styles.panel} aria-label="Order printing matter">
     <button type="button" className={styles.toggle} aria-controls={panelId} aria-expanded={open} onClick={toggle} disabled={uploadBusy}>
       <span className={styles.icon}><Printer size={21} strokeWidth={1.5} aria-hidden="true" /></span>
-      <span className={styles.toggleText}><strong>Upload printing matter</strong><small>Send your wording or design files for this order.</small></span>
+      <span className={styles.toggleText}><strong>Upload printing matter (optional)</strong><small>Buying cards without printing? You can skip this.</small></span>
       <ChevronDown className={styles.chevron} size={18} aria-hidden="true" />
     </button>
     <div id={panelId} hidden={!open} className={styles.body}>
-      <p className={styles.intro}>Share your invitation wording, artwork or reference design. Our team will review your files and confirm printing charges and the final proof with you before printing.</p>
+      <p className={styles.intro}>If you need printing, share your invitation wording, artwork or reference design. Our team will review your files and confirm printing charges and the final proof with you. Cards without printing do not need an upload.</p>
       {error && <div role="alert" className={styles.error}><p>{error}</p>{!loaded && !busy && <button type="button" onClick={() => void loadFiles()}>Try loading files again</button>}</div>}
       {success && <p role="status" className={styles.success}>{success}</p>}
       {pending && !uploadBusy && <div className={styles.notice}><p>Confirm the upload of <strong>{pending.name}</strong> before adding another file.</p><button type="button" className={styles.secondary} style={{ marginTop: 10 }} disabled={Boolean(busy)} onClick={() => void submit()}>Retry confirmation</button></div>}
@@ -272,7 +272,7 @@ function OrderPrintingMatterForm({ orderId, receiptToken }: Props) {
         <div className={styles.historyHeading}><h3>Submitted files{loaded ? ` (${files.length})` : ""}</h3>
           <button type="button" className={styles.refresh} disabled={Boolean(busy)} onClick={() => void loadFiles()}><RefreshCw size={13} className={busy === "loading" ? styles.spin : undefined} aria-hidden="true" />{busy === "loading" ? "Loading…" : "Refresh"}</button>
         </div>
-        {loaded && (files.length ? <PrintingFileList files={files} downloadingId={downloadingId} disabled={Boolean(busy)} onDownload={selected => void download(selected)} /> : <p className={styles.empty}>No files submitted yet. You can upload now or return to this order later.</p>)}
+        {loaded && (files.length ? <PrintingFileList files={files} downloadingId={downloadingId} disabled={Boolean(busy)} onDownload={selected => void download(selected)} /> : <p className={styles.empty}>No files submitted. Upload only if you need printing; you can also return to this order later.</p>)}
         {files.length > 0 && <p className={styles.hint} style={{ marginTop: 12 }}>Previous uploads stay with your order. If you send a revision, mention which file it replaces in the instructions.</p>}
       </div>
     </div>

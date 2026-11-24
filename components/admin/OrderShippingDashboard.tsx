@@ -276,7 +276,7 @@ function OrderDetails({ order, onUpdate, onReload, canManageShipments }: {
     </div>
     {order.notes && <div className={styles.notes}><h3>Customer notes</h3><p>{order.notes}</p></div>}
 
-    <OrderPrintingFiles key={order.id} orderId={order.id} canManageFiles={canManageShipments} />
+    <OrderPrintingFiles key={order.id} orderId={order.id} />
 
     {error && <p className={styles.error} role="alert"><CircleAlert size={18} />{error}</p>}
     {success && <p className={styles.success} role="status"><Check size={18} />{success}</p>}

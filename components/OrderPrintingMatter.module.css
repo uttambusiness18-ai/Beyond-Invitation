@@ -54,7 +54,6 @@
 .admin { margin-top: 24px; padding-top: 22px; border-top: 1px solid #e5d9c7; }
 .admin h3 { color: #50372b; font-size: 16px; font-weight: 600; }
 .adminIntro { color: #6f5847; font-size: 13px; line-height: 1.6; margin: 8px 0 14px; }
-.adminSignIn { color: #7b1c2e; text-decoration: underline; text-underline-offset: 3px; }
 .spin { animation: printing-spin 1s linear infinite; }
 @keyframes printing-spin { to { transform: rotate(360deg); } }
 @media (max-width: 480px) { .toggle, .body { padding: 16px; } .toggle { gap: 9px; } .icon { width: 35px; height: 39px; } .toggleText strong { font-size: 15px; } .fileTop { flex-wrap: wrap; gap: 8px; } .fileInfo { flex-basis: calc(100% - 30px); } .download { margin-left: 27px; } .actions .primary { width: 100%; } .fileLabel { padding: 14px; } }
