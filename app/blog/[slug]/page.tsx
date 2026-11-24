@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ArrowUpRight, Clock3 } from "lucide-react";
+import { Poppins } from "next/font/google";
+import { ChevronRight, Clock3 } from "lucide-react";
 import { getPublishedBlog, getPublishedBlogs } from "@/lib/blog-server";
 import { blogDate } from "@/lib/blog";
 import { getSiteUrl } from "@/lib/site-config";
@@ -9,9 +10,14 @@ import { absoluteUrl } from "@/lib/seo";
 import JsonLd from "@/components/seo/JsonLd";
 import BlogMarkdown from "@/components/blog/BlogMarkdown";
 import BlogImage from "@/components/blog/BlogImage";
-import BlogCard from "@/components/blog/BlogCard";
 import BlogShare from "@/components/blog/BlogShare";
-import styles from "@/components/blog/Blog.module.css";
+import styles from "@/components/blog/Article.module.css";
+
+const poppins = Poppins({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+});
 
 export const dynamic = "force-dynamic";
 type Props = { params: Promise<{ slug: string }> };
@@ -57,9 +63,9 @@ export default async function ArticlePage({ params }: Props) {
         Number(b.category === post.category) -
         Number(a.category === post.category),
     )
-    .slice(0, 3);
+    .slice(0, 4);
   return (
-    <div className={styles.page}>
+    <div className={`${styles.page} ${poppins.className}`}>
       <JsonLd
         data={{
           "@context": "https://schema.org",
@@ -82,66 +88,92 @@ export default async function ArticlePage({ params }: Props) {
           mainEntityOfPage: `${getSiteUrl()}/blog/${post.slug}`,
         }}
       />
-      <article className={styles.container}>
-        <nav className={styles.articleBreadcrumb} aria-label="Breadcrumb">
-          <Link href="/blog">
-            <ArrowLeft size={15} />
-            Back to the journal
-          </Link>
-          <span>{post.category}</span>
-        </nav>
-        <header className={styles.articleHeader}>
-          <span className={styles.eyebrow}>{post.category}</span>
-          <h1>{post.title}</h1>
-          <p>{post.excerpt}</p>
-          <div className={styles.articleMeta}>
-            <span>By {post.author}</span>
-            <span aria-hidden="true">·</span>
-            <time dateTime={post.published_at || undefined}>
-              {blogDate(post.published_at)}
-            </time>
-            <span>
-              <Clock3 size={14} />
-              {post.reading_minutes} min read
-            </span>
-          </div>
-        </header>
-        {post.cover_image && (
-          <div className={styles.articleCover}>
-            <BlogImage src={post.cover_image} alt={post.cover_alt} priority />
-          </div>
-        )}
-        <div className={styles.articleLayout}>
-          <div className={styles.articleBody}>
-            <BlogMarkdown content={post.content} />
-            <div className={styles.articleEnd}>
-              <span>
-                Written by <strong>{post.author}</strong>
-              </span>
+      <div className={styles.layout}>
+        <article className={styles.article}>
+          <header className={styles.hero}>
+            <div className={styles.cover}>
+              <BlogImage src={post.cover_image} alt={post.cover_alt} priority />
+            </div>
+            <div className={styles.heroContent}>
+              <nav className={styles.breadcrumb} aria-label="Breadcrumb">
+                <Link href="/">Home</Link>
+                <ChevronRight size={12} aria-hidden="true" />
+                <Link href="/blog">Blog</Link>
+                <ChevronRight size={12} aria-hidden="true" />
+                <span className={styles.category}>{post.category}</span>
+              </nav>
+              <h1>{post.title}</h1>
+              <div className={styles.heroMeta}>
+                <div className={styles.author}>
+                  <div className={styles.byline}>
+                    <span>{post.author}</span>
+                    <time dateTime={post.published_at || undefined}>
+                      {blogDate(post.published_at)}
+                    </time>
+                  </div>
+                </div>
+                <span className={styles.readingTime}>
+                  <Clock3 size={13} aria-hidden="true" />
+                  {post.reading_minutes} min read
+                </span>
+              </div>
+            </div>
+          </header>
+          <div className={styles.contentPanel}>
+            <div className={styles.shareRail}>
               <BlogShare />
             </div>
+            <div className={styles.articleBody}>
+              <BlogMarkdown content={post.content} />
+              <footer className={styles.articleEnd}>
+                <span>
+                  Written by <strong>{post.author}</strong>
+                </span>
+                <Link href="/blog">Back to all stories</Link>
+              </footer>
+            </div>
           </div>
-        </div>
-      </article>
-      <div className={styles.container}>
-        {!!related.length && (
-          <section className={styles.related}>
-            <div className={styles.sectionHeading}>
-              <div>
-                <span className={styles.eyebrow}>STAY A LITTLE LONGER</span>
-                <h2>There’s more to be inspired by.</h2>
-              </div>
-              <Link href="/blog">
-                All stories <ArrowUpRight size={16} />
-              </Link>
-            </div>
-            <div className={styles.grid}>
+        </article>
+        <aside
+          className={styles.recommended}
+          aria-labelledby="recommended-heading"
+        >
+          <div className={styles.recommendedHeading}>
+            <h2 id="recommended-heading">Recommended</h2>
+            <Link href="/blog">View All</Link>
+          </div>
+          {related.length ? (
+            <ul className={styles.recommendedList}>
               {related.map((item) => (
-                <BlogCard key={item.id} post={item} />
+                <li key={item.id}>
+                  <Link
+                    href={`/blog/${item.slug}`}
+                    className={styles.recommendedLink}
+                  >
+                    <div className={styles.thumbnail}>
+                      <BlogImage src={item.cover_image} alt="" />
+                    </div>
+                    <div className={styles.recommendedContent}>
+                      <h3>{item.title}</h3>
+                      <div className={styles.recommendedMeta}>
+                        <span>{item.author}</span>
+                        <span aria-hidden="true">·</span>
+                        <time dateTime={item.published_at || undefined}>
+                          {blogDate(item.published_at)}
+                        </time>
+                      </div>
+                    </div>
+                  </Link>
+                </li>
               ))}
-            </div>
-          </section>
-        )}
+            </ul>
+          ) : (
+            <p className={styles.emptyRecommendations}>
+              More stories are on the way. Explore{" "}
+              <Link href="/blog">the journal</Link> for wedding inspiration.
+            </p>
+          )}
+        </aside>
       </div>
     </div>
   );

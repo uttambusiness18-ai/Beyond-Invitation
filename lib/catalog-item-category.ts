@@ -1,6 +1,7 @@
 import "server-only";
 
 import { unstable_cache } from "next/cache";
+import { HIDDEN_STOREFRONT_SUBJECTS } from "@/lib/storefront-availability";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import {
@@ -123,7 +124,7 @@ const readProductsByItemCategory = unstable_cache(
 
     return products.sort(compareWeddingCardProducts);
   },
-  ["products-by-item-category-v8-web-categories"],
+  ["products-by-item-category-v9-visibility", HIDDEN_STOREFRONT_SUBJECTS.join("|")],
   { revalidate: 60, tags: ["catalogue"] },
 );
 
@@ -163,7 +164,7 @@ const readItemCategoryProductPage = unstable_cache(
       total: products.length,
     };
   },
-  ["itemCategoryProductPage-v2-total", String(PRODUCTS_PER_PAGE)],
+  ["itemCategoryProductPage-v3-visibility", String(PRODUCTS_PER_PAGE), HIDDEN_STOREFRONT_SUBJECTS.join("|")],
   { revalidate: 60, tags: ["catalogue"] },
 );
 
@@ -208,7 +209,7 @@ const readWeddingCardsWithCategories = unstable_cache(
       )
       .sort(compareWeddingCardProducts);
   },
-  ["wedding-cards-with-item-categories-v6-web-titles"],
+  ["wedding-cards-with-item-categories-v7-visibility", HIDDEN_STOREFRONT_SUBJECTS.join("|")],
   { revalidate: 60, tags: ["catalogue"] },
 );
 

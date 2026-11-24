@@ -36,6 +36,7 @@ const ATTRIBUTION_PARAMS = [
 const queuedPurchases = new Set<string>();
 let initialized = false;
 let configured = false;
+let analyticsConfigured = false;
 let previousConsent: boolean | undefined;
 let lastTrackedPage: { location: string; referrer: string } | undefined;
 
@@ -70,7 +71,7 @@ function consentSettings(accepted: boolean) {
   };
 }
 
-/** One shared Google loader for Analytics and the existing Ads destination. */
+/** Shared tag: cookieless Ads signals by default; Analytics views after consent. */
 export function syncGoogleTracking(): boolean {
   if (
     typeof window === "undefined" ||
@@ -90,33 +91,35 @@ export function syncGoogleTracking(): boolean {
         allow_google_signals: false,
         allow_ad_personalization_signals: false,
         allow_enhanced_conversions: false,
+        ads_data_redaction: true,
+        url_passthrough: false,
       });
       initialized = true;
     }
-    const location = googleTrackingUrl(window.location.href, true);
-    const referrer =
+    const accepted = hasMarketingConsent();
+    const location = googleTrackingUrl(window.location.href, accepted);
+    const referrer = googleTrackingUrl(
       lastTrackedPage?.location === location
         ? lastTrackedPage.referrer
-        : (lastTrackedPage?.location ?? googleTrackingUrl(document.referrer));
+        : (lastTrackedPage?.location ?? googleTrackingUrl(document.referrer)),
+      accepted,
+    );
     window.gtag("set", { page_location: location, page_referrer: referrer });
 
-    const accepted = hasMarketingConsent();
     if (accepted !== previousConsent) {
       window.gtag("consent", "update", consentSettings(accepted));
       previousConsent = accepted;
     }
-    if (!accepted) {
-      lastTrackedPage = undefined;
-      return false;
-    }
-
     if (!configured) {
       window.gtag("js", new Date());
       window.gtag("config", GOOGLE_ADS_ID);
+      configured = true;
+    }
+    if (accepted && !analyticsConfigured) {
       // Explicit views keep private URL parameters out of initial and SPA hits.
       // Keep GA enhanced history page views disabled to avoid duplicate views.
       window.gtag("config", GOOGLE_ANALYTICS_ID, { send_page_view: false });
-      configured = true;
+      analyticsConfigured = true;
     }
     if (!document.getElementById(GOOGLE_TAG_SCRIPT_ID)) {
       const script = document.createElement("script");
@@ -127,7 +130,9 @@ export function syncGoogleTracking(): boolean {
       script.onerror = () => script.remove();
       document.head.appendChild(script);
     }
-    if (location && lastTrackedPage?.location !== location) {
+    if (!accepted) {
+      lastTrackedPage = undefined;
+    } else if (location && lastTrackedPage?.location !== location) {
       window.gtag("event", "page_view", {
         send_to: GOOGLE_ANALYTICS_ID,
         page_location: location,
@@ -151,7 +156,10 @@ export function trackLeadConversion(): boolean {
       send_to: GOOGLE_ADS_LEAD_DESTINATION,
       value: 1.0,
       currency: "INR",
-      page_location: googleTrackingUrl(window.location.href, true),
+      page_location: googleTrackingUrl(
+        window.location.href,
+        hasMarketingConsent(),
+      ),
       page_referrer: googleTrackingUrl(document.referrer),
     });
     return true;
@@ -177,13 +185,15 @@ export function trackPurchaseConversion(receipt: PurchaseReceipt): boolean {
     if (!syncGoogleTracking() || !window.gtag) return false;
     const key = `beyond-google-ads-purchase:${receipt.id}`;
     if (queuedPurchases.has(key)) return false;
-    try {
-      if (
-        window.sessionStorage.getItem(key) === GOOGLE_ADS_PURCHASE_DESTINATION
-      )
-        return false;
-    } catch {
-      /* Google still deduplicates using the stable transaction ID. */
+    if (hasMarketingConsent()) {
+      try {
+        if (
+          window.sessionStorage.getItem(key) === GOOGLE_ADS_PURCHASE_DESTINATION
+        )
+          return false;
+      } catch {
+        /* Google still deduplicates using the stable transaction ID. */
+      }
     }
 
     queuedPurchases.add(key);
@@ -193,10 +203,15 @@ export function trackPurchaseConversion(receipt: PurchaseReceipt): boolean {
         value: receipt.amountPaise / 100,
         currency: receipt.currency,
         transaction_id: receipt.id,
-        page_location: googleTrackingUrl(window.location.href, true),
+        page_location: googleTrackingUrl(
+          window.location.href,
+          hasMarketingConsent(),
+        ),
         page_referrer: googleTrackingUrl(document.referrer),
         event_callback: () => {
           // Persist only after the loaded tag processes the event, not when blocked/queued.
+          // Consent can be revoked while the event is waiting for the tag.
+          if (!hasMarketingConsent()) return;
           try {
             window.sessionStorage.setItem(key, GOOGLE_ADS_PURCHASE_DESTINATION);
           } catch {

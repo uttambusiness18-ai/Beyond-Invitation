@@ -141,10 +141,13 @@ export default function CookieConsent() {
                 id="cookie-consent-description"
                 className="mt-1.5 text-base leading-relaxed text-ink-mid"
               >
-                Essential cookies keep sign-in, your cart, wishlist and checkout
-                working. With your permission, Google cookies also help us
-                understand visits and measure purchases and enquiries from our ads.
-                You can change your choice in Cookie preferences below.
+                Essential cookies keep your shopping and sign-in working. Accept
+                all enables Google cookies and visit analytics. Even before you
+                choose or with Essential only, Google receives limited purchase,
+                enquiry and consent signals without optional cookies. Purchase
+                signals include the order reference, value and currency; submitted
+                contact details are excluded. Change your choice in Cookie
+                preferences.
               </p>
             </div>
           </div>

@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { MAX_WISHLIST_ITEMS, normalizeWishlistSlugs, parseWishlist, WISHLIST_STORAGE_KEY } from "@/lib/wishlist";
+import { requestWishlist } from "@/lib/wishlist-client";
 import { useAuth } from "./AuthProvider";
 
 const SYNC_KEY = `${WISHLIST_STORAGE_KEY}-sync`;
@@ -54,18 +55,8 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     function broadcast() {
       try { localStorage.setItem(SYNC_KEY, JSON.stringify({ userId, nonce: Math.random() })); } catch {}
     }
-    async function request(method: string, body?: object) {
-      const response = await fetch("/api/wishlist", {
-        method, cache: "no-store", credentials: "same-origin", signal: controller.signal,
-        headers: { "Content-Type": "application/json", "x-wishlist-user": userId! },
-        ...(body ? { body: JSON.stringify(body) } : {}),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Unable to sync your wishlist. Please try again.");
-      if (data.userId !== userId || !Array.isArray(data.slugs)) {
-        throw new Error("Your account changed. Please reload your wishlist.");
-      }
-      return { slugs: normalizeWishlistSlugs(data.slugs), unmergedSlugs: normalizeWishlistSlugs(data.unmergedSlugs) };
+    function request(method: "GET" | "POST" | "DELETE", body?: object) {
+      return requestWishlist(method, userId!, controller.signal, body);
     }
     function finish(error: string) {
       busy = false;

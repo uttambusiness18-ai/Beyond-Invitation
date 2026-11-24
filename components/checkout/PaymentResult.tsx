@@ -115,7 +115,7 @@ export default function PaymentResult({ outcome, orderId, paymentId }: Props) {
   const itemCount = receipt?.items.reduce((sum, item) => sum + item.quantity, 0) || 0;
 
   useEffect(() => {
-    if (!receipt || receipt.id !== validOrderId || receipt.paymentStatus !== "paid" || receipt.testMode) return;
+    if (outcome !== "success" || !receipt || receipt.id !== validOrderId || receipt.paymentStatus !== "paid" || receipt.testMode) return;
     const purchase: Pick<PaymentReceipt, "id" | "paymentStatus" | "testMode" | "amountPaise" | "currency"> = {
       id: receipt.id,
       paymentStatus: receipt.paymentStatus,
@@ -128,7 +128,7 @@ export default function PaymentResult({ outcome, orderId, paymentId }: Props) {
     // A customer may accept measurement after their payment has been confirmed.
     window.addEventListener(COOKIE_CONSENT_EVENT, track);
     return () => window.removeEventListener(COOKIE_CONSENT_EVENT, track);
-  }, [receipt, validOrderId]);
+  }, [outcome, receipt, validOrderId]);
 
   useEffect(() => {
     if (state !== "pending" || loading || error || pollCount.current >= 5) return;

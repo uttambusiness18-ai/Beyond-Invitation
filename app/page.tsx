@@ -7,6 +7,7 @@ import { getAllCategories } from "@/lib/products";
 
 import JsonLd from "@/components/seo/JsonLd";
 import { getSiteUrl, DEFAULT_OG_IMAGE, SITE_NAME } from "@/lib/site-config";
+import { SHAGUN_ENVELOPES_ENABLED } from "@/lib/storefront-availability";
 import { absoluteUrl } from "@/lib/seo";
 
 import {
@@ -34,8 +35,9 @@ const siteName = SITE_NAME;
 const title =
   "Wedding Cards in Kolkata | Wedding Invitation Cards Online India - Beyond Invitation";
 
-const description =
-  "Shop premium wedding cards in Kolkata from Beyond Invitation. Explore Indian wedding invitation cards, designer wedding cards, shagun envelopes and wedding stationery with pan-India delivery.";
+const description = SHAGUN_ENVELOPES_ENABLED
+  ? "Shop premium wedding cards in Kolkata from Beyond Invitation. Explore Indian wedding invitation cards, designer wedding cards, shagun envelopes and wedding stationery with pan-India delivery."
+  : "Shop premium wedding cards in Kolkata from Beyond Invitation. Explore Indian wedding invitation cards, designer wedding cards and wedding stationery with pan-India delivery.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -55,7 +57,7 @@ export const metadata: Metadata = {
     "Hindu wedding cards",
     "Muslim wedding cards",
     "Christian wedding cards",
-    "shagun envelopes",
+    ...(SHAGUN_ENVELOPES_ENABLED ? ["shagun envelopes"] : []),
     "shagun boxes",
     "Beyond Invitation",
   ],

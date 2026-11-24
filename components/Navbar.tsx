@@ -6,6 +6,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import gsap from "gsap";
 import { subscribeMediaQuery } from "@/lib/media-query";
+import { isStorefrontCollectionVisible } from "@/lib/storefront-availability";
 
 import CartButton from "./CartButton";
 import SearchBar from "./SearchBar";
@@ -21,7 +22,7 @@ type NavItem = {
   dropdown?: DropdownItem[];
 };
 
-const navMenu: NavItem[] = [
+const allNavMenu: NavItem[] = [
   {
     label: "Wedding Cards",
     href: "/wedding-cards",
@@ -62,6 +63,10 @@ const navMenu: NavItem[] = [
   },
   { label: "Blogs", href: "/blog" },
 ];
+
+const navMenu = allNavMenu.filter((item) =>
+  isStorefrontCollectionVisible(item.href?.replace("/collections/", "") ?? ""),
+);
 
 function isHrefActive(pathname: string, href?: string) {
   if (!href) {

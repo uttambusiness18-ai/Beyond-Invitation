@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { BRAND } from "@/components/siteConfig";
 import { siteUrl } from "@/lib/site-config";
+import { SHAGUN_ENVELOPES_ENABLED } from "@/lib/storefront-availability";
 
 export const metadata: Metadata = {
   title: `Visit Us | ${BRAND}`,
@@ -33,8 +34,7 @@ export default function VisitUsPage() {
             </h1>
 
             <p className="mt-5 max-w-2xl text-base leading-8 text-neutral-700 sm:text-lg">
-              Visit our Kolkata showroom to explore wedding cards,
-              boxes and fancy money envelopes. Our team will help you
+              Visit our Kolkata showroom to explore {SHAGUN_ENVELOPES_ENABLED ? "wedding cards, boxes and fancy money envelopes" : "wedding cards and boxes"}. Our team will help you
               choose designs, understand finishes and plan the right invitation
               for your celebration.
             </p>
@@ -110,8 +110,7 @@ export default function VisitUsPage() {
                 Bharat Agency Wedding Cards Pvt. Ltd.
               </p>
               <p className="mt-1 text-sm leading-5 text-neutral-600">
-                Distributor of Khushi Wedding Cards, Boxes &
-                Fancy Money Envelopes.
+                {SHAGUN_ENVELOPES_ENABLED ? "Distributor of Khushi Wedding Cards, Boxes & Fancy Money Envelopes." : "Distributor of Khushi Wedding Cards & Boxes."}
               </p>
             </div>
           </div>

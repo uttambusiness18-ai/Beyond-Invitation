@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAuthServerClient } from "@/lib/supabase/auth-server";
 import { MAX_WISHLIST_ITEMS, normalizeWishlistSlugs } from "@/lib/wishlist";
+import { isStorefrontSubjectVisible } from "@/lib/storefront-availability";
 
 export const dynamic = "force-dynamic";
 
@@ -71,9 +72,11 @@ async function handle(request: Request, method: "GET" | "POST" | "DELETE") {
     let available: string[] = [];
     if (newSlugs.length) {
       const { data: products, error: productError } = await client
-        .from("v_web_products").select("slug").in("slug", newSlugs);
+        .from("v_web_products").select("slug,subject").in("slug", newSlugs);
       if (productError) throw productError;
-      const published = new Set((products ?? []).map((product) => product.slug));
+      const published = new Set((products ?? [])
+        .filter((product) => isStorefrontSubjectVisible(product.subject))
+        .map((product) => product.slug));
       available = newSlugs.filter((slug) => published.has(slug));
       if (!merging && !available.length) return json({ error: "This product is no longer available." }, 404);
     }

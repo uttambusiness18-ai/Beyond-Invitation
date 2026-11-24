@@ -11,6 +11,7 @@ import {
   type CatalogLineProduct,
 } from "@/lib/chatbot/catalog-format";
 import { createCatalogSearchPlan, selectSearchContextProducts } from "@/lib/chatbot/search-context";
+import { SHAGUN_ENVELOPES_ENABLED } from "@/lib/storefront-availability";
 
 const MAX_CATALOG_TOKENS = 25_000;
 
@@ -28,7 +29,7 @@ const subjectUrls: Record<string, string> = {
   "christian wedding card": "/collections/wedding-card-christian",
   bengali: "/collections/wedding-card-bengali",
   "bengali wedding card": "/collections/wedding-card-bengali",
-  "shagun envelopes": "/collections/shagun-envelopes",
+  ...(SHAGUN_ENVELOPES_ENABLED ? { "shagun envelopes": "/collections/shagun-envelopes" } : {}),
   "wedding box": "/wedding-boxes",
   common: "/wedding-cards",
   wedding: "/collections/wedding",

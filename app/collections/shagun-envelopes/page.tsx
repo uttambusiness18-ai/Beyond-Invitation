@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { SHAGUN_ENVELOPES_ENABLED } from "@/lib/storefront-availability";
 
 import { fetchCatalogProductPage } from "@/lib/catalog-browse";
 import { emptyCatalogPage } from "@/lib/catalog-browse-options";
@@ -9,13 +11,15 @@ export const revalidate = 0;
 
 const SUBJECT = "Shagun Envelopes";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = SHAGUN_ENVELOPES_ENABLED ? {
   title: "Shagun Envelopes – Beyond Invitation",
   description:
     "Explore premium Shagun Envelopes from Beyond Invitation.",
-};
+} : { title: "Collection unavailable", robots: { index: false, follow: false } };
 
 export default async function ShagunEnvelopesPage() {
+  if (!SHAGUN_ENVELOPES_ENABLED) notFound();
+
   let page = emptyCatalogPage();
   let errorMessage = "";
 

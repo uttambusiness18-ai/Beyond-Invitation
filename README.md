@@ -598,7 +598,7 @@ page as its referrer. Automatic initial page views are disabled in code. Keep
 events** disabled for this GA4 stream, because the application sends those views.
 The published stream had no automatic GA4 history page-view listener when checked.
 
-Purchase measurement runs on the checkout result after `/api/orders/receipt`
+Purchase measurement runs only on `/checkout/success` after `/api/orders/receipt`
 returns the matching, authorized order with `paymentStatus: "paid"` and
 `testMode: false`. The conversion sends the stored order total (including shipping)
 in INR and the order UUID as `transaction_id`. Pending payments can convert after
@@ -612,26 +612,46 @@ errors, failed requests, and honeypot submissions do not trigger this conversion
 The submit guard prevents repeated clicks from sending duplicate requests; another
 successfully submitted enquiry can send a new conversion. The event is called from
 the successful submission handler, so rerendering the success message does not
-send it again. No form fields or customer details are included in the event.
+send it again. Cookie acceptance is not required to queue a conversion. If the
+tracker cannot queue the event, the confirmed enquiry remains pending in memory
+while its success screen is open. A later consent change retries that pending
+event; a successful queue, resetting the form, or leaving it clears the pending
+state. No submitted form fields are included in the event.
 
-The cookie banner offers optional measurement or essential cookies only. The
-Google script waits for acceptance; an earlier version's essential-cookie
-acceptance is not treated as advertising consent. Visitors can change their choice
-using **Cookie preferences** in the footer. Consent Mode keeps advertising user
-data and personalisation denied; enhanced conversions and remarketing are not part
-of this integration. The custom conversion events contain no customer name, email,
-phone, address, or notes. Tracking URLs exclude private order capabilities and
-query fields, retaining only standard advertising attribution parameters.
+The cookie banner offers optional Google cookies and visit analytics or essential
+cookies only. The shared Google tag loads before a choice so that Google Ads can
+receive limited cookieless conversion and consent signals even when optional
+cookies are declined or no choice has been made. Consent Mode defaults
+`ad_storage`, `analytics_storage`, `ad_user_data`, and `ad_personalization` to
+`denied`. Acceptance grants only advertising and analytics storage; Analytics
+page views and optional Google cookies require that acceptance. Advertising user
+data and personalization stay denied, and enhanced conversions and remarketing
+are disabled. An earlier version's essential-cookie acceptance is not treated as
+advertising consent. Visitors can change their choice
+using **Cookie preferences** in the footer. Both choices are saved for one year
+in a cookie and an expiring local-storage backup in the same browser. The backup
+keeps repeat visits from prompting again when the preference cookie is unavailable;
+ordinary visits do not renew its expiry. A valid cookie takes precedence over the
+backup. The custom conversion events contain no submitted customer name, email,
+phone, address, or notes. Purchases retain the order UUID, amount, and currency;
+leads retain the fixed INR 1 value. Google still receives ordinary request metadata,
+including IP address, browser information, request time, and page information.
+Cookieless measurement does not mean no data is sent. Tracking URLs exclude private
+order capabilities and query fields. Standard advertising attribution parameters
+are retained only after optional-cookie acceptance; denied consent also enables
+Google Ads data redaction and disables URL passthrough.
 
-The browser queues each order once and remembers processed conversions for the
-tab session. The stable transaction ID also lets Google deduplicate repeat visits
-when browser storage is unavailable. Browser blocking, declined consent, or leaving
+The browser queues each order once in memory. After optional-cookie acceptance it
+also remembers processed conversions in session storage; otherwise measurement
+does not read or write that storage. The stable transaction ID also lets Google
+deduplicate repeat visits when browser storage is unavailable. Browser blocking,
+tag loading failures, or leaving
 before a payment is confirmed can prevent client-side measurement; this is not a
 server-to-server conversion integration.
 
 Verification:
 
-- `node --test tests/google-tracking.test.cjs tests/enquiry-form.test.cjs`
+- `node --test tests/google-tracking.test.cjs tests/enquiry-form.test.cjs tests/payment-result-tracking.test.cjs`
 - `node scripts/check-google-tag.cjs` checks the currently published Google runtime
   for Analytics views, Ads purchases, and lead submissions with all measurement
   requests intercepted, so it cannot send test visits or conversions.
@@ -639,14 +659,19 @@ Verification:
   Check `page_view` events in Google Analytics **Reports > Realtime** for
   `G-X379LZMKP7`. The supplied screenshot labels this stream **ExpenseFlow Pro Web**;
   this setup uses its measurement ID exactly as supplied.
-- After deployment, connect Google Tag Assistant to the live checkout. Accept
-  optional cookies and complete a genuine live purchase. Confirm one conversion
+- After deployment, connect Google Tag Assistant to the live checkout and complete
+  a genuine live purchase. Confirm one conversion
   with label `4scPCKSbrrsdEMPtjJlF`, the actual INR total, and the order UUID.
   Test-mode payments intentionally do not fire the production conversion.
-- After deployment, use Google Tag Assistant with optional cookies accepted and a
-  genuine enquiry. Confirm one conversion with label `39GSCNLBy7wdEMPtjJlF`, value
+- After deployment, use Google Tag Assistant with a genuine enquiry. Confirm one
+  conversion with label `39GSCNLBy7wdEMPtjJlF`, value
   `1.0`, and currency `INR` after the success message. Do not add a second GTM trigger
   for the same lead destination.
+- Check the no-choice and **Essential only** states: purchase and enquiry events
+  should still queue as cookieless Ads conversions with all four consent settings
+  denied. Confirm that no optional Google cookies or Analytics page views appear.
+  Then accept optional cookies and confirm advertising and analytics storage are
+  granted and Analytics page views begin, without repeating earlier conversions.
 - In Google Ads, keep the purchase action in the **Purchase** category and use transaction
   values and **Every** counting. The existing automatic `/wedding-cards` page-view
   action is configured remotely in Google, not by this code. To optimize campaigns

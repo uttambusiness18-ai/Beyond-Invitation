@@ -18,6 +18,7 @@ import {
 } from "@/lib/contact";
 import { CONTACT } from "@/lib/site-config";
 import { trackLeadConversion } from "@/lib/google-tracking";
+import { COOKIE_CONSENT_EVENT } from "@/lib/cookie-consent";
 
 const labelClass = "mb-2 text-sm font-semibold leading-5 text-ink";
 const hintClass = "mt-2 text-sm leading-relaxed text-ink-mid";
@@ -67,6 +68,8 @@ export default function EnquiryForm({ enquiryProduct }: { enquiryProduct: Enquir
   const formRef = useRef<HTMLFormElement>(null);
   const submitting = useRef(false);
   const submission = useRef<{ payload: string; requestId: string } | null>(null);
+  const mounted = useRef(false);
+  const pendingLeadConversion = useRef(false);
   const focusAfterReset = useRef(false);
   const invalidField = useRef<string | null>(null);
   const motion = useContactMotion();
@@ -78,6 +81,21 @@ export default function EnquiryForm({ enquiryProduct }: { enquiryProduct: Enquir
     : "Hello Beyond Invitation, I would like to know more.");
 
   useEffect(() => { setToday(localToday()); }, []);
+  useEffect(() => {
+    mounted.current = true;
+    const trackPendingLead = () => {
+      if (pendingLeadConversion.current && trackLeadConversion()) {
+        pendingLeadConversion.current = false;
+      }
+    };
+    // A preference change can retry a confirmed enquiry if queueing failed.
+    window.addEventListener(COOKIE_CONSENT_EVENT, trackPendingLead);
+    return () => {
+      mounted.current = false;
+      pendingLeadConversion.current = false;
+      window.removeEventListener(COOKIE_CONSENT_EVENT, trackPendingLead);
+    };
+  }, []);
   useEffect(() => {
     if (totalRef.current && total != null) motion.countTo(totalRef.current, total, formatInr);
   }, [total, budgetOpen, motion]);
@@ -108,6 +126,7 @@ export default function EnquiryForm({ enquiryProduct }: { enquiryProduct: Enquir
 
   function reset() {
     submission.current = null;
+    pendingLeadConversion.current = false;
     setRequirement(initial.requirement);
     setSubRequirement(initial.subRequirement);
     setCardTypeMounted(initial.requirement === "Wedding Cards");
@@ -175,7 +194,7 @@ export default function EnquiryForm({ enquiryProduct }: { enquiryProduct: Enquir
         return;
       }
       setSuccess({ name, mobile: phone });
-      trackLeadConversion();
+      if (mounted.current) pendingLeadConversion.current = !trackLeadConversion();
     } catch {
       setSubmitError("");
     } finally {

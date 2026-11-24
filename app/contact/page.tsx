@@ -6,11 +6,13 @@ import { Card } from "@/components/ui/card";
 import { fetchErpProductBySlug } from "@/lib/catalog";
 import type { EnquiryProduct } from "@/lib/contact";
 import { siteUrl } from "@/lib/site-config";
+import { SHAGUN_ENVELOPES_ENABLED } from "@/lib/storefront-availability";
 
 export const metadata: Metadata = {
   title: "Contact Us | Beyond Invitation",
-  description:
-    "Get in touch with Beyond Invitation for wedding invitations, shagun envelopes, and celebration stationery.",
+  description: SHAGUN_ENVELOPES_ENABLED
+    ? "Get in touch with Beyond Invitation for wedding invitations, shagun envelopes, and celebration stationery."
+    : "Get in touch with Beyond Invitation for wedding invitations, boxes, and celebration stationery.",
   alternates: { canonical: "/contact" },
   openGraph: { url: siteUrl("/contact") },
 };
@@ -53,7 +55,7 @@ export default async function ContactPage({ searchParams }: {
                 <span key={word}>{index > 0 ? " " : ""}<span data-motion="heading-word" className="inline-block">{word}</span></span>
               ))}
             </h1>
-            <p data-motion="intro" className="mt-5 text-base leading-8 text-ink-mid">Wedding cards, shagun envelopes or a custom design — send the details and our team will call or message you back.</p>
+            <p data-motion="intro" className="mt-5 text-base leading-8 text-ink-mid">{SHAGUN_ENVELOPES_ENABLED ? "Wedding cards, shagun envelopes or a custom design" : "Wedding cards, boxes or a custom design"} — send the details and our team will call or message you back.</p>
             <div data-header-rule className="my-8 h-px bg-gradient-to-r from-gold via-gold/40 to-transparent" />
             <ContactChannels enquiryProduct={enquiryProduct} />
           </div>

@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import ProductPrice from "@/components/ProductPrice";
 import { CHATBOT_SHOWROOM } from "@/data/chatbot-knowledge";
+import { SHAGUN_ENVELOPES_ENABLED } from "@/lib/storefront-availability";
 import {
   CHATBOT_FALLBACK_REPLY,
   type ChatMessage,
@@ -14,8 +15,9 @@ import {
 } from "@/lib/chatbot/types";
 
 const STORAGE_KEY = "beyond-invitation-chat-v1";
-const OPENING =
-  "Hello. I can help you find wedding cards, shagun envelopes, boxes and rakhi products. What are you looking for?";
+const OPENING = SHAGUN_ENVELOPES_ENABLED
+  ? "Hello. I can help you find wedding cards, shagun envelopes, boxes and rakhi products. What are you looking for?"
+  : "Hello. I can help you find wedding cards, boxes and rakhi products. What are you looking for?";
 const QUICK_REPLIES = [
   "Hindu wedding cards",
   "Cards under ₹50",

@@ -1,3 +1,5 @@
+import { SHAGUN_ENVELOPES_ENABLED, isStorefrontSubjectVisible } from "@/lib/storefront-availability";
+
 export type EnquiryProduct = {
   slug: string;
   designNo: string;
@@ -8,10 +10,10 @@ export type EnquiryProduct = {
   minOrderQty: number | null;
 };
 
-export const REQUIREMENTS = [
+export const REQUIREMENTS = ([
   { value: "Wedding Cards", label: "Wedding cards" },
   { value: "Sagun Envelopes", label: "Shagun envelopes" },
-] as const;
+] as const).filter(item => item.value !== "Sagun Envelopes" || SHAGUN_ENVELOPES_ENABLED);
 
 export const WEDDING_CARD_TYPES = [
   { value: "Hindu Wedding Cards", label: "Hindu wedding cards" },
@@ -22,6 +24,7 @@ export const WEDDING_CARD_TYPES = [
 ] as const;
 
 export function requirementFromSubject(subject: string) {
+  if (!isStorefrontSubjectVisible(subject)) return { requirement: "", subRequirement: "" };
   switch (subject.trim()) {
     case "Hindu Wedding Card":
     case "Muslim Wedding Card":

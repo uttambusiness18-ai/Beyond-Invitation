@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { SHAGUN_ENVELOPES_ENABLED } from "@/lib/storefront-availability";
 
 const TEXT_ITEMS = [
   "Wedding Cards",
-  "Shagun Envelopes",
+  ...(SHAGUN_ENVELOPES_ENABLED ? ["Shagun Envelopes"] : []),
   "Premium Printing",
   "Pan-India Delivery",
   "Wholesale & Retail",

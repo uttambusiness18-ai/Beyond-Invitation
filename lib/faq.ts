@@ -1,5 +1,7 @@
 ﻿import { MIN_ORDER_QUANTITY, WEDDING_BOX_MIN_ORDER_QUANTITY } from "@/lib/product-quantity";
 
+import { SHAGUN_ENVELOPES_ENABLED } from "@/lib/storefront-availability";
+
 export type FaqItem = {
   id: string;
   question: string;
@@ -18,7 +20,7 @@ export const faqItems: FaqItem[] = [
   {
     id: "minimum-order",
     question: "What is the minimum order quantity?",
-    answer: `Wedding cards start at ${MIN_ORDER_QUANTITY} pieces, in steps of 25. Wedding boxes start at ${WEDDING_BOX_MIN_ORDER_QUANTITY}, in steps of 25, and shagun envelopes start at ${MIN_ORDER_QUANTITY}, in steps of 50. Each product’s quantity selector shows the available increments.`,
+    answer: `Wedding cards start at ${MIN_ORDER_QUANTITY} pieces, in steps of 25. Wedding boxes start at ${WEDDING_BOX_MIN_ORDER_QUANTITY}, in steps of 25${SHAGUN_ENVELOPES_ENABLED ? `, and shagun envelopes start at ${MIN_ORDER_QUANTITY}, in steps of 50` : ""}. Each product’s quantity selector shows the available increments.`,
   },
   {
     id: "printing-cost",

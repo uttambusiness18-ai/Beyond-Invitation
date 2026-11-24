@@ -2,6 +2,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BRAND } from "@/components/siteConfig";
+import { SHAGUN_ENVELOPES_ENABLED } from "@/lib/storefront-availability";
 
 export const metadata: Metadata = {
   title: `Terms & Conditions | ${BRAND}`,
@@ -23,7 +24,7 @@ const sections = [
   {
     title: "2. About Our Products and Services",
     body: [
-      `${BRAND} offers wedding invitations, shagun envelopes, invitation stationery, gifting-related packaging and other printed or customized products.`,
+      `${BRAND} offers wedding invitations, ${SHAGUN_ENVELOPES_ENABLED ? "shagun envelopes, " : ""}invitation stationery, gifting-related packaging and other printed or customized products.`,
       `Products displayed on the website may include ready designs, catalog items, customizable products, made-to-order products and products that require manual confirmation before final production.`,
       `Some products may require design approval, size confirmation, text confirmation, printing confirmation, stock confirmation or production feasibility confirmation before order processing.`,
     ],

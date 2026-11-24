@@ -1,3 +1,5 @@
+import { SHAGUN_ENVELOPES_ENABLED } from "@/lib/storefront-availability";
+
 // Public facts only. Sources: app/visit-us/page.tsx, components/Footer.tsx,
 // lib/faq.ts, app/about/page.tsx, app/terms-and-conditions/page.tsx,
 // app/shipping-policy/page.tsx, app/refund-policy/page.tsx and README.md.
@@ -25,7 +27,8 @@ export const CHATBOT_MISSING_FACTS = [
 
 export const CHATBOT_KNOWLEDGE = `
 Brand: Beyond Invitation, a brand of Bharat Agency Wedding Cards Pvt. Ltd.
-Products: Wedding invitation cards, including Hindu, Muslim and Christian cards; shagun envelopes; wedding boxes; rakhi products; festive gifting stationery and packaging.
+Products: Wedding invitation cards, including Hindu, Muslim and Christian cards; ${SHAGUN_ENVELOPES_ENABLED ? "shagun envelopes; " : ""}wedding boxes; rakhi products; festive gifting stationery and packaging.
+${SHAGUN_ENVELOPES_ENABLED ? "" : "Website availability: Shagun envelopes are temporarily unavailable on the website. Do not recommend them or promise a return date or showroom availability."}
 Showroom address: ${CHATBOT_SHOWROOM.address}
 Phone / WhatsApp: ${CHATBOT_SHOWROOM.phone}. Landline: 033-22428918.
 Email: ${CHATBOT_SHOWROOM.email}
@@ -33,7 +36,7 @@ Showroom opening hours and days: NOT PROVIDED.
 Delivery areas: Across India. Online checkout accepts Indian delivery addresses only. Customers can check pincode availability and a shipping estimate in the cart or at checkout; the final shipping charge appears before payment.
 Preparation / dispatch estimates: The shipping policy lists 3–4 days for our manufactured cards without printing. Printing requires additional time; during peak season, allow 10–12 days after approval of the printing matter. Orders are processed and dispatched on business days, excluding Sundays and public holidays. These are estimates, not delivery promises. The team must confirm timing for the design, quantity and event date.
 Destination-specific courier transit times: NOT PROVIDED. Courier transit varies by location.
-Minimum order quantity: Wedding cards start at 50 pieces, in steps of 25. Wedding boxes start at 25, in steps of 25. Shagun envelopes start at 50, in steps of 50. The product quantity selector shows the available increments.
+Minimum order quantity: Wedding cards start at 50 pieces, in steps of 25. Wedding boxes start at 25, in steps of 25. ${SHAGUN_ENVELOPES_ENABLED ? "Shagun envelopes start at 50, in steps of 50. " : ""}The product quantity selector shows the available increments.
 Printing: Printing is not included in the listed product price. Its cost depends on the number of impressions, printing method, optional foil work and selected card. Contact the team to confirm printing details and costs before ordering.
 Customisation of card text, language, colours and finish: Options depend on the design. The team must confirm feasibility, additional cost and time. A proof, preview, sample image or confirmation may be shared for approval. Changes after approval may cost extra, cause delays or be unavailable after production starts. Do not collect names or printing details in this chat; direct customers to the team.
 Samples: Customers may compare wedding card samples, materials, printing and finishes at the Kolkata showroom. Those unable to visit should contact the team about available sample or preview options for their chosen design.

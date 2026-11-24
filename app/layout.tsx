@@ -6,6 +6,7 @@ import "./globals.css";
 
 import { SITE_NAME } from "@/components/siteConfig";
 import { getSiteUrl, DEFAULT_OG_IMAGE } from "@/lib/site-config";
+import { SHAGUN_ENVELOPES_ENABLED } from "@/lib/storefront-availability";
 
 import StorefrontShell from "@/components/StorefrontShell";
 import ChatWidgetLoader from "@/components/chatbot/ChatWidgetLoader";
@@ -21,6 +22,9 @@ const assistant = Assistant({
 });
 
 const siteUrl = getSiteUrl();
+const description = SHAGUN_ENVELOPES_ENABLED
+  ? "Discover premium wedding invitation cards, shagun envelopes, boxes, and celebration stationery by Beyond Invitation."
+  : "Discover premium wedding invitation cards, boxes, and celebration stationery by Beyond Invitation.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -30,8 +34,7 @@ export const metadata: Metadata = {
     template: `%s | ${SITE_NAME}`,
   },
 
-  description:
-    "Discover premium wedding invitation cards, shagun envelopes, boxes, and celebration stationery by Beyond Invitation.",
+  description,
 
   applicationName: SITE_NAME,
 
@@ -47,14 +50,13 @@ export const metadata: Metadata = {
   keywords: [
     "wedding invitation cards",
     "wedding cards Kolkata",
-    "shagun envelopes",
+    ...(SHAGUN_ENVELOPES_ENABLED ? ["shagun envelopes"] : []),
   ],
 
   openGraph: {
     title: SITE_NAME,
 
-    description:
-      "Discover premium wedding invitation cards, shagun envelopes, boxes, and celebration stationery by Beyond Invitation.",
+    description,
 
     url: siteUrl,
     siteName: SITE_NAME,
@@ -74,8 +76,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: SITE_NAME,
 
-    description:
-      "Discover premium wedding invitation cards, shagun envelopes, boxes, and celebration stationery by Beyond Invitation.",
+    description,
   },
 
   robots: {

@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { ProductSection } from "@/components/ProductGrid";
 import type { Category, Product } from "@/types";
+import { isStorefrontCollectionVisible, SHAGUN_ENVELOPES_ENABLED } from "@/lib/storefront-availability";
 
 /* ------------------------------------------------------------------ */
 /* Shared building blocks */
@@ -147,7 +148,7 @@ export function CelebrationGrid({
       slug: "wedding-card-bengali",
       image: "https://res.cloudinary.com/dhbevwau9/image/upload/v1794916798/Bengali_Wedding_Cards_Showcase_wm8wi7.png",
     },
-  ];
+  ].filter((category) => isStorefrontCollectionVisible(category.slug));
 
   return (
     <section
@@ -182,7 +183,7 @@ export function CelebrationGrid({
           <span className="h-px flex-1 bg-current" />
         </div>
 
-        <div className="mt-9 grid grid-cols-2 gap-x-3 gap-y-6 sm:mt-12 sm:grid-cols-3 sm:gap-x-4 xl:mt-[48px] xl:grid-cols-6 xl:gap-x-[0.84vw]">
+        <div className={`mt-9 grid grid-cols-2 gap-x-3 gap-y-6 sm:mt-12 sm:grid-cols-3 sm:gap-x-4 xl:mt-[48px] xl:gap-x-[0.84vw] ${SHAGUN_ENVELOPES_ENABLED ? "xl:grid-cols-6" : "xl:grid-cols-5"}`}>
           {categoryItems.map((cat) => (
             <Link
               key={cat.slug}
@@ -197,7 +198,7 @@ export function CelebrationGrid({
                       src={cat.image}
                       alt={cat.name}
                       fill
-                      sizes="(min-width: 1800px) 195px, (min-width: 1280px) 12vw, (min-width: 640px) 25vw, 50vw"
+                      sizes={SHAGUN_ENVELOPES_ENABLED ? "(min-width: 1800px) 195px, (min-width: 1280px) 12vw, (min-width: 640px) 25vw, 50vw" : "(min-width: 1800px) 330px, (min-width: 1280px) 18vw, (min-width: 640px) 30vw, 50vw"}
                       className="object-cover motion-safe:transition-transform motion-safe:duration-500 motion-safe:group-hover:scale-105"
                     />
                   )}

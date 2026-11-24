@@ -4,11 +4,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { BRAND, TAGLINE } from "@/components/siteConfig";
 import { siteUrl } from "@/lib/site-config";
+import { SHAGUN_ENVELOPES_ENABLED } from "@/lib/storefront-availability";
 
 export const metadata: Metadata = {
   title: `About Us | ${BRAND}`,
-  description:
-    "Learn about Beyond Invitation, a brand of Bharat Agency Wedding Cards Pvt. Ltd., carrying a 65+ year legacy in wedding cards, shagun envelopes and celebration stationery.",
+  description: SHAGUN_ENVELOPES_ENABLED
+    ? "Learn about Beyond Invitation, a brand of Bharat Agency Wedding Cards Pvt. Ltd., carrying a 65+ year legacy in wedding cards, shagun envelopes and celebration stationery."
+    : "Learn about Beyond Invitation, a brand of Bharat Agency Wedding Cards Pvt. Ltd., carrying a 65+ year legacy in wedding cards and celebration stationery.",
   alternates: {
     canonical: "/about",
   },
@@ -19,8 +21,8 @@ export const metadata: Metadata = {
 
 const highlights = [
   { value: "65+", label: "Years of Legacy" },
-  { value: "3", label: "Celebrations Categories" },
-  { value: "Premium", label: "Cards, Envelopes & Packaging" },
+  { value: SHAGUN_ENVELOPES_ENABLED ? "3" : "2", label: "Celebrations Categories" },
+  { value: "Premium", label: SHAGUN_ENVELOPES_ENABLED ? "Cards, Envelopes & Packaging" : "Cards & Packaging" },
   { value: "Kolkata", label: "Based Wedding Card House" },
 ];
 
@@ -38,14 +40,16 @@ const values = [
   {
     no: "03",
     title: "Tradition with new ideas",
-    text: "Today, the company offers wedding cards, shagun envelopes and boxes, blending decades of experience with designs made for modern Indian celebrations.",
+    text: SHAGUN_ENVELOPES_ENABLED
+      ? "Today, the company offers wedding cards, shagun envelopes and boxes, blending decades of experience with designs made for modern Indian celebrations."
+      : "Today, the company offers wedding cards and boxes, blending decades of experience with designs made for modern Indian celebrations.",
   },
 ];
 
 const services = [
   "Wedding Cards",
   "Designer Wedding Cards",
-  "Shagun / Money Envelopes",
+  ...(SHAGUN_ENVELOPES_ENABLED ? ["Shagun / Money Envelopes"] : []),
   "Special Occasion Cards",
 ];
 
@@ -92,8 +96,7 @@ export default function AboutPage() {
               {BRAND} is the brand of Bharat Agency Wedding Cards Pvt. Ltd.,
               a company with a legacy of over 65 years. What started as a
               greeting card business gradually grew into a trusted wedding card
-              house, and today we create wedding cards, shagun envelopes
-              and boxes for celebrations that deserve a beautiful
+              house, and today we create {SHAGUN_ENVELOPES_ENABLED ? "wedding cards, shagun envelopes and boxes" : "wedding cards and boxes"} for celebrations that deserve a beautiful
               beginning.
             </p>
 
@@ -167,7 +170,7 @@ export default function AboutPage() {
             Wedding Cards Pvt. Ltd., a name that has been around for more than
             six decades. Over the years, the company expanded from greeting
             cards into wedding cards, and then into celebration essentials like
-            shagun envelopes and boxes. Every product we make
+            {SHAGUN_ENVELOPES_ENABLED ? "shagun envelopes and boxes" : "boxes"}. Every product we make
             is rooted in experience, trust and the joy of helping families mark
             important moments.
           </p>
@@ -223,8 +226,9 @@ export default function AboutPage() {
             </h2>
 
             <p className="mt-5 leading-8 text-ink-mid">
-              From wedding cards that announce a new beginning to shagun
-              envelopes that complete festive gifting, our
+              {SHAGUN_ENVELOPES_ENABLED
+                ? "From wedding cards that announce a new beginning to shagun envelopes that complete festive gifting, our"
+                : "From wedding cards that announce a new beginning to boxes that complete festive gifting, our"}{" "}
               collections are designed to bring elegance, tradition and
               presentation together.
             </p>
@@ -365,7 +369,7 @@ export default function AboutPage() {
 
                 <div className="mt-16">
                   <p className="font-serif text-3xl leading-tight text-carbon sm:text-4xl">
-                    Wedding cards and shagun envelopes backed
+                    {SHAGUN_ENVELOPES_ENABLED ? "Wedding cards and shagun envelopes" : "Wedding cards and boxes"} backed
                     by a 65+ year legacy.
                   </p>
 

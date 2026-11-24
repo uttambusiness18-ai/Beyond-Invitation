@@ -14,6 +14,7 @@ const React = require("react");
 const { act } = React;
 const { createRoot } = require("react-dom/client");
 const h = React.createElement;
+const COOKIE_CONSENT_EVENT = "cookie-consent-change";
 test.after(() => dom.window.close());
 
 function primitive(tag) {
@@ -32,7 +33,7 @@ function RadioGroupItem({ value, children }) {
   );
 }
 
-async function formHarness(t, respond = async () => ({ ok: true, json: async () => ({ success: true }) })) {
+async function formHarness(t, respond = async () => ({ ok: true, json: async () => ({ success: true }) }), track = () => false) {
   const requests = [];
   const conversions = [];
   const noop = () => {};
@@ -49,7 +50,8 @@ async function formHarness(t, respond = async () => ({ ok: true, json: async () 
     "@/components/contact/ProductEnquiryBanner": { default: () => null },
     "@/components/contact/EnquirySuccess": { default: ({ onReset }) => h("div", { role: "status" }, "Enquiry received", h("button", { onClick: onReset }, "Send another enquiry")) },
     "@/lib/site-config": { CONTACT: { whatsappNumber: "919876543210" } },
-    "@/lib/google-tracking": { trackLeadConversion: (...args) => { conversions.push(args); return false; } },
+    "@/lib/google-tracking": { trackLeadConversion: (...args) => { conversions.push(args); return track(); } },
+    "@/lib/cookie-consent": { COOKIE_CONSENT_EVENT },
   };
   function load(relativePath) {
     const filename = path.resolve(__dirname, "..", relativePath);
@@ -62,6 +64,7 @@ async function formHarness(t, respond = async () => ({ ok: true, json: async () 
       name => {
         if (Object.hasOwn(mocks, name)) return mocks[name];
         if (name === "@/lib/contact") return load("lib/contact.ts");
+        if (name === "@/lib/storefront-availability") return load("lib/storefront-availability.ts");
         assert.ok(!name.startsWith("@/"), `Unexpected dependency: ${name}`);
         return require(name);
       }, module, module.exports, dom.window.FormData,
@@ -74,7 +77,14 @@ async function formHarness(t, respond = async () => ({ ok: true, json: async () 
   document.body.appendChild(container);
   const root = createRoot(container);
   await act(() => root.render(h(React.StrictMode, null, h(Form, { enquiryProduct: null }))));
-  t.after(async () => { await act(() => root.unmount()); container.remove(); });
+  let mounted = true;
+  const unmount = async () => {
+    if (!mounted) return;
+    mounted = false;
+    await act(() => root.unmount());
+    container.remove();
+  };
+  t.after(unmount);
   const query = selector => container.querySelector(selector);
   const setInput = async (name, value) => {
     const input = query(`[name="${name}"]`);
@@ -85,9 +95,20 @@ async function formHarness(t, respond = async () => ({ ok: true, json: async () 
   };
   return {
     requests, conversions, query,
-    setInput,
+    setInput, unmount,
+    async consentChanged() {
+      await act(() => window.dispatchEvent(new window.Event(COOKIE_CONSENT_EVENT)));
+    },
+    async rerender() {
+      await act(() => root.render(h(React.StrictMode, null, h(Form, { enquiryProduct: null }))));
+    },
     async fill() {
-      await act(() => query('[name="requirement"][value="Sagun Envelopes"]').click());
+      await act(() => query('[name="requirement"][value="Wedding Cards"]').click());
+      await act(() => {
+        const select = query('[name="subRequirement"]');
+        select.value = "General Wedding Cards";
+        select.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+      });
       await setInput("name", "Test Customer");
       await setInput("mobile", "9876543210");
     },
@@ -112,6 +133,7 @@ test("honeypot success does not send a lead or conversion", async t => {
   await form.submit();
   assert.ok(form.query('[role="status"]'));
   assert.equal(form.requests.length, 0);
+  await form.consentChanged();
   assert.equal(form.conversions.length, 0);
 });
 
@@ -127,6 +149,7 @@ test("failed, malformed, and non-boolean successful responses do not convert", a
       const form = await formHarness(child, async () => response);
       await form.fill();
       await form.submit();
+      await form.consentChanged();
       assert.equal(form.requests.length, 1);
       assert.equal(form.conversions.length, 0);
       assert.ok(form.query('[role="alert"]'));
@@ -182,4 +205,73 @@ test("one confirmed response converts once despite duplicate submits, and anothe
   assert.notEqual(another.requestId, first.requestId, "Send another enquiry starts a separate receipt");
   await act(() => resolveResponse({ ok: true, json: async () => ({ success: true }) }));
   assert.deepEqual(form.conversions, [[], []]);
+});
+
+test("a confirmed enquiry retries an unavailable tracker once it recovers on the success screen", async t => {
+  let trackingAvailable = false;
+  let sent = 0;
+  const form = await formHarness(t, undefined, () => {
+    if (!trackingAvailable) return false;
+    sent += 1;
+    return true;
+  });
+  await form.consentChanged();
+  assert.equal(form.conversions.length, 0, "Consent alone cannot create a lead");
+  await form.fill();
+  await form.submit();
+  assert.ok(form.query('[role="status"]'));
+  assert.equal(sent, 0);
+  await form.rerender();
+  assert.equal(form.conversions.length, 1, "Rerendering must not retry measurement");
+  await form.consentChanged();
+  assert.equal(sent, 0, "An unavailable tracker must leave the confirmed lead pending");
+  trackingAvailable = true;
+  await form.consentChanged();
+  assert.equal(sent, 1);
+  await form.consentChanged();
+  trackingAvailable = false;
+  await form.consentChanged();
+  trackingAvailable = true;
+  await form.consentChanged();
+  await form.rerender();
+  assert.equal(sent, 1, "Repeated choices and renders cannot duplicate the lead");
+  assert.equal(form.requests.length, 1, "Measurement retry must not resend the enquiry");
+});
+
+test("an immediately measured enquiry is not repeated after a consent change", async t => {
+  const form = await formHarness(t, undefined, () => true);
+  await form.fill();
+  await form.submit();
+  await form.consentChanged();
+  await form.rerender();
+  await form.consentChanged();
+  assert.deepEqual(form.conversions, [[]]);
+});
+
+test("resetting or leaving the enquiry success screen discards pending measurement", async t => {
+  for (const action of ["reset", "unmount"]) {
+    await t.test(action, async child => {
+      let trackingAvailable = false;
+      const form = await formHarness(child, undefined, () => trackingAvailable);
+      await form.fill();
+      await form.submit();
+      assert.equal(form.conversions.length, 1);
+      if (action === "reset") await act(() => form.query('[role="status"] button').click());
+      else await form.unmount();
+      trackingAvailable = true;
+      await form.consentChanged();
+      assert.equal(form.conversions.length, 1, "An old enquiry must not convert after its success screen is gone");
+    });
+  }
+});
+
+test("a response arriving after the form unmounts does not create pending measurement", async t => {
+  let resolveResponse;
+  const form = await formHarness(t, () => new Promise(resolve => { resolveResponse = resolve; }), () => true);
+  await form.fill();
+  await form.submit();
+  await form.unmount();
+  await act(() => resolveResponse({ ok: true, json: async () => ({ success: true }) }));
+  await form.consentChanged();
+  assert.equal(form.conversions.length, 0);
 });

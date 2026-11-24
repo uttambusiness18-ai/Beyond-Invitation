@@ -1,5 +1,6 @@
 import "server-only";
 import { unstable_cache } from "next/cache";
+import { HIDDEN_STOREFRONT_SUBJECTS } from "@/lib/storefront-availability";
 import { discountPercent } from "@/types";
 import {
   fetchErpProductsBase,
@@ -181,7 +182,7 @@ const readCatalogBrowsePage = unstable_cache(
       total: filtered.length,
     };
   },
-  ["catalogBrowsePage-v2"],
+  ["catalogBrowsePage-v3-visibility", HIDDEN_STOREFRONT_SUBJECTS.join("|")],
   { revalidate: 60, tags: ["catalogue"] },
 );
 
@@ -263,7 +264,7 @@ const readWeddingCategoryCounts = unstable_cache(
       })),
     };
   },
-  ["weddingCategoryCounts-v1-subjects"],
+  ["weddingCategoryCounts-v2-visibility", HIDDEN_STOREFRONT_SUBJECTS.join("|")],
   { revalidate: 60, tags: ["catalogue"] },
 );
 
@@ -380,7 +381,7 @@ const readWeddingBrowsePage = unstable_cache(
       facets,
     };
   },
-  ["weddingBrowsePage-v8-subject-categories"],
+  ["weddingBrowsePage-v9-visibility", HIDDEN_STOREFRONT_SUBJECTS.join("|")],
   { revalidate: 60, tags: ["catalogue"] },
 );
 

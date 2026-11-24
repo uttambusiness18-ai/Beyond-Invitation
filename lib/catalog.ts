@@ -8,6 +8,7 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { applyCatalogDetails } from "@/lib/catalog-pricing";
 import { PRODUCTS_PER_PAGE } from "@/lib/product-page";
 import { readStorefrontPage, readStorefrontRows } from "@/lib/storefront-data";
+import { HIDDEN_STOREFRONT_SUBJECTS, isStorefrontSubjectVisible } from "@/lib/storefront-availability";
 import {
   selectSimilarProducts,
   type SimilarProduct,
@@ -173,7 +174,7 @@ export function mapCatalogRowToProduct(row: WebProductRow): CatalogProduct {
 export async function resolveCatalogProducts(
   rows: WebProductRow[],
 ): Promise<CatalogProduct[]> {
-  const resolvedRows = await applyCatalogDetails(rows);
+  const resolvedRows = await applyCatalogDetails(rows.filter((row) => isStorefrontSubjectVisible(row.subject)));
   return resolvedRows.map(mapCatalogRowToProduct);
 }
 
@@ -208,7 +209,7 @@ const readCatalogProducts = unstable_cache(
 
     return products;
   },
-  ["buildErpProductList-v10-item-category"],
+  ["buildErpProductList-v11-visibility", HIDDEN_STOREFRONT_SUBJECTS.join("|")],
   { revalidate: 60, tags: ["catalogue"] },
 );
 
@@ -232,7 +233,7 @@ const readCatalogProductBySlug = unstable_cache(
 
     return (await resolveCatalogProducts(data))[0] ?? null;
   },
-  ["catalogProductBySlug-v4-item-category"],
+  ["catalogProductBySlug-v5-visibility", HIDDEN_STOREFRONT_SUBJECTS.join("|")],
   { revalidate: 60, tags: ["catalogue"] },
 );
 
@@ -252,12 +253,12 @@ const readCatalogProductsBySlugs = unstable_cache(
     if (error) throw new Error(`Product catalogue unavailable: ${error.message}`);
     return resolveCatalogProducts(data ?? []);
   },
-  ["catalogProductsBySlugs-v1"],
+  ["catalogProductsBySlugs-v2-visibility", HIDDEN_STOREFRONT_SUBJECTS.join("|")],
   { revalidate: 60, tags: ["catalogue"] },
 );
 
-// The optimized reader filters before pagination. The legacy priced-only path
-// must resolve Selling prices before filtering; its public view has older prices.
+// The optimized reader filters before pagination. The legacy path resolves
+// prices and paused subjects before slicing whenever either filter is active.
 const readCatalogProductPage = unstable_cache(
   async (
     offset: number,
@@ -278,9 +279,9 @@ const readCatalogProductPage = unstable_cache(
         nextOffset: optimized.nextOffset,
         total: optimized.total,
       };
-    if (pricedOnly) {
+    if (pricedOnly || HIDDEN_STOREFRONT_SUBJECTS.length) {
       const products = (await readCatalogProducts()).filter(
-        (product) => Number.isFinite(product.price) && product.price > 0,
+        (product) => !pricedOnly || (Number.isFinite(product.price) && product.price > 0),
       );
       const end = offset + PRODUCTS_PER_PAGE;
       return {
@@ -315,7 +316,7 @@ const readCatalogProductPage = unstable_cache(
       total: count,
     };
   },
-  ["catalogProductPage-v5-total", String(PRODUCTS_PER_PAGE)],
+  ["catalogProductPage-v6-visibility", String(PRODUCTS_PER_PAGE), HIDDEN_STOREFRONT_SUBJECTS.join("|")],
   { revalidate: 60, tags: ["catalogue"] },
 );
 

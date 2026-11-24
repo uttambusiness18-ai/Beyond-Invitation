@@ -1,9 +1,11 @@
 import "server-only";
 
+import { unstable_cache } from "next/cache";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import type { WebProductRow } from "@/lib/catalog";
 import { applyCatalogPrintNames } from "@/lib/catalog-titles";
 import { catalogueErrorMessage } from "@/lib/catalog-errors";
+import { HIDDEN_STOREFRONT_SUBJECTS, isStorefrontSubjectVisible } from "@/lib/storefront-availability";
 
 export interface StorefrontRow extends WebProductRow {
   item_category: string;
@@ -61,6 +63,33 @@ function missingContract(
   return false;
 }
 
+// The existing page RPC already filters subjects before pagination and facets.
+// Cache only the narrow subject list so a paused collection needs no DB change.
+const readVisibleSubjectKeys = unstable_cache(async (): Promise<string[] | null> => {
+  const resource = "v_storefront_products";
+  if ((unavailableUntil.get(resource) ?? 0) > Date.now()) return null;
+  const subjects = new Set<string>();
+  const pageSize = 1000;
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await getSupabaseServerClient().from(resource)
+      .select("subject_key")
+      .order("id", { ascending: true })
+      .range(offset, offset + pageSize - 1)
+      .returns<{ subject_key: string }[]>();
+    if (error) {
+      if (missingContract(error, resource)) return null;
+      throw new Error(`Product catalogue unavailable: ${catalogueErrorMessage(error)}`);
+    }
+    for (const row of data ?? []) {
+      if (isStorefrontSubjectVisible(row.subject_key)) subjects.add(row.subject_key);
+    }
+    if ((data?.length ?? 0) < pageSize) break;
+  }
+  return [...subjects].sort();
+}, ["visible-storefront-subjects-v1", HIDDEN_STOREFRONT_SUBJECTS.join("|")], {
+  revalidate: 60, tags: ["catalogue"],
+});
+
 /** null means the migration is not installed; [] is a valid empty result. */
 export async function readStorefrontRows(
   options: { slug?: string; slugs?: string[]; offset?: number; limit?: number } = {},
@@ -69,6 +98,9 @@ export async function readStorefrontRows(
   const resource = "v_storefront_products";
   if ((unavailableUntil.get(resource) ?? 0) > Date.now()) return null;
   let query = getSupabaseServerClient().from(resource).select("*");
+  if (HIDDEN_STOREFRONT_SUBJECTS.length) {
+    query = query.not("subject_key", "in", `(${HIDDEN_STOREFRONT_SUBJECTS.map((subject) => JSON.stringify(subject)).join(",")})`);
+  }
   if (options.slug !== undefined) query = query.eq("slug", options.slug);
   if (options.slugs !== undefined) query = query.in("slug", options.slugs);
   const offset = options.offset ?? 0;
@@ -90,7 +122,16 @@ export async function readStorefrontPage(
 ): Promise<StorefrontPageResult | null> {
   const resource = "storefront_product_page";
   if ((unavailableUntil.get(resource) ?? 0) > Date.now()) return null;
-  const { data, error } = await getSupabaseServerClient().rpc(resource, query);
+  let visibleQuery = query;
+  if (HIDDEN_STOREFRONT_SUBJECTS.length) {
+    const subjects = query.p_subjects !== undefined
+      ? query.p_subjects.filter(isStorefrontSubjectVisible)
+      : await readVisibleSubjectKeys();
+    if (subjects === null) return null;
+    // An empty array intentionally yields no rows; undefined would expose all.
+    visibleQuery = { ...query, p_subjects: subjects };
+  }
+  const { data, error } = await getSupabaseServerClient().rpc(resource, visibleQuery);
   if (error) {
     if (missingContract(error, resource)) return null;
     throw new Error(`Product catalogue unavailable: ${catalogueErrorMessage(error)}`);

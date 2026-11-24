@@ -1,0 +1,70 @@
+.share {
+  width: 40px;
+  align-self: start;
+}
+
+.toolbar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3px 0;
+  border-radius: 6px;
+  background: #f8edf0;
+  color: #111;
+}
+
+.toolbar a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 35px;
+  flex-shrink: 0;
+  border-radius: 4px;
+  color: inherit;
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.toolbar svg {
+  width: 12px;
+  height: 12px;
+}
+
+.toolbar a:hover {
+  color: #a42b50;
+  background: #f0dfe5;
+}
+
+.toolbar a:focus-visible {
+  outline: 2px solid #a42b50;
+  outline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+  .share {
+    width: fit-content;
+    max-width: 100%;
+  }
+
+  .toolbar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    padding: 0;
+  }
+
+  .toolbar a {
+    width: 44px;
+    height: 44px;
+  }
+
+  .toolbar svg {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toolbar a {
+    transition: none;
+  }
+}

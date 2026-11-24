@@ -1,3 +1,5 @@
+import { SHAGUN_ENVELOPES_ENABLED } from "@/lib/storefront-availability";
+
 const DEFAULT_SITE_URL = "https://www.beyondinvitation.co.in";
 
 function normalizeUrl(value?: string | null) {
@@ -28,8 +30,9 @@ export const CONTACT = {
   instagramHandle: "@beyond_invitationofficial",
 } as const;
 
-export const SITE_DESCRIPTION =
-  "Shop premium wedding cards, wedding invitation cards, shagun envelopes, shagun boxes, and invitation stationery from Beyond Invitation in Kolkata.";
+export const SITE_DESCRIPTION = SHAGUN_ENVELOPES_ENABLED
+  ? "Shop premium wedding cards, wedding invitation cards, shagun envelopes, shagun boxes, and invitation stationery from Beyond Invitation in Kolkata."
+  : "Shop premium wedding cards, wedding invitation cards, shagun boxes, and invitation stationery from Beyond Invitation in Kolkata.";
 
 export const PRIMARY_KEYWORDS = [
   "wedding cards",
@@ -44,7 +47,7 @@ export const PRIMARY_KEYWORDS = [
   "Christian wedding cards",
   "premium wedding cards",
   "invitation printing Kolkata",
-  "shagun envelopes",
+  ...(SHAGUN_ENVELOPES_ENABLED ? ["shagun envelopes"] : []),
   "shagun boxes",
   "Beyond Invitation",
 ];
