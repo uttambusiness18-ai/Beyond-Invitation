@@ -100,7 +100,7 @@ export async function readPrintingRequest(
     );
   }
   if (
-    request.headers.get("content-type")?.split(";")[0].trim().toLowerCase() !==
+    request.headers.get("content-type")?.split(";")[0].trim().toLowerCase() !== 
     "application/json"
   ) {
     throw new OrderPrintingError("Send printing details as JSON.", 415);
