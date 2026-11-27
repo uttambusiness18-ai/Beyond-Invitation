@@ -75,7 +75,15 @@ function inspectHtml(text, url, response, agent) {
         const data = JSON.parse(script.textContent);
         return [...[data].flat(), ...[data["@graph"] || []].flat()];
       });
-      assert.ok(nodes.some(node => [node?.["@type"]].flat().includes("Product")), "missing server-rendered Product structured data");
+      assert.ok(nodes.some(node => [node?.["@type"]].flat().includes("WebPage") && node.url === canonical), "missing server-rendered product WebPage structured data");
+      const products = nodes.filter(node => [node?.["@type"]].flat().includes("Product"));
+      const price = Number(document.querySelector('meta[property="product:price:amount"], meta[name="product:price:amount"]')?.getAttribute("content"));
+      if (Number.isFinite(price) && price > 0) {
+        assert.ok(products.some(node => node.url === canonical), "priced product is missing Product structured data");
+      }
+      for (const product of products) {
+        assert.ok(product.offers || product.review || product.aggregateRating, "Product structured data has no offer or review; quote-only pages should use WebPage markup");
+      }
     }
     return { heading: h1, products: links, canonical };
   } finally {
@@ -153,4 +161,4 @@ async function main() {
 }
 
 if (require.main === module) main().catch(error => { console.error(error.message); process.exitCode = 1; });
-module.exports = { robotsGroups, robotsAllows, blocksIndexing };
+module.exports = { robotsGroups, robotsAllows, blocksIndexing, inspectHtml };

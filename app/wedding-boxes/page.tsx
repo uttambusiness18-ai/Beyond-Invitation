@@ -19,7 +19,6 @@ import WeddingCardsCollection from "@/components/wedding-cards/WeddingCardsColle
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-const ITEM_CATEGORY = "Wedding Box";
 const PAGE_PATH = "/wedding-boxes";
 const PAGE_URL = siteUrl(PAGE_PATH);
 
@@ -144,20 +143,9 @@ export default async function WeddingBoxesPage({ searchParams }: PageProps) {
     itemListElement: initialPage.products.map((product, index) => ({
       "@type": "ListItem",
       position: ((initialPage.pageNumber ?? pageNumber) - 1) * COLLECTION_PAGE_SIZE + index + 1,
+      name: formatProductName(product.name, product.printName),
       url: siteUrl(`/products/${product.slug}`),
-      item: {
-        "@type": "Product",
-        name: formatProductName(product.name, product.printName),
-        description,
-        image: getPublicProductImageUrls([product.image])[0],
-        url: siteUrl(`/products/${product.slug}`),
-        category: ITEM_CATEGORY,
-        offers: Number.isFinite(product.price) && product.price > 0 ? {
-          "@type": "Offer",
-          priceCurrency: "INR",
-          price: product.price,
-        } : undefined,
-      },
+      image: getPublicProductImageUrls([product.image])[0],
     })),
   };
 

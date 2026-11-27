@@ -2,24 +2,51 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { BRAND } from "@/components/siteConfig";
-import { BUSINESS_ADDRESS_TEXT, CONTACT, siteUrl } from "@/lib/site-config";
+import { BUSINESS_ADDRESS_TEXT, BUSINESS_IMAGE, BUSINESS_NAME, CONTACT, SITE_NAME, siteUrl } from "@/lib/site-config";
+import { getBusinessIdentity } from "@/lib/business-schema";
+import JsonLd from "@/components/seo/JsonLd";
 import { SHAGUN_ENVELOPES_ENABLED } from "@/lib/storefront-availability";
 
+const title = `Visit ${BUSINESS_NAME}`;
+const description = `Visit ${BUSINESS_NAME} at ${BUSINESS_ADDRESS_TEXT}.`;
+const images = [{ url: siteUrl(BUSINESS_IMAGE), alt: `${BUSINESS_NAME} showroom in Kolkata` }];
+
 export const metadata: Metadata = {
-  title: `Visit Us | ${BRAND}`,
-  description: `Visit Beyond Invitation / Bharat Agency Wedding Cards Pvt. Ltd. at ${BUSINESS_ADDRESS_TEXT}.`,
+  title: { absolute: title },
+  description,
   alternates: {
     canonical: "/visit-us",
   },
   openGraph: {
+    title,
+    description,
+    siteName: SITE_NAME,
+    type: "website",
     url: siteUrl("/visit-us"),
+    images,
   },
+  twitter: { card: "summary_large_image", title, description, images },
 };
 
 export default function VisitUsPage() {
+  const business = getBusinessIdentity();
   return (
     <main className="min-h-screen bg-[#fffaf5]">
+      <JsonLd data={{
+        "@context": "https://schema.org",
+        "@graph": [
+          business,
+          {
+            "@type": "WebPage",
+            "@id": `${siteUrl("/visit-us")}#webpage`,
+            url: siteUrl("/visit-us"),
+            name: title,
+            description,
+            mainEntity: { "@id": business["@id"] },
+            primaryImageOfPage: { "@type": "ImageObject", url: siteUrl(BUSINESS_IMAGE) },
+          },
+        ],
+      }} />
       <section className="border-b border-amber-100 bg-gradient-to-br from-[#fff7ed] via-white to-[#fef3c7]">
         <div className="mx-auto grid min-w-0 max-w-6xl items-center gap-10 px-4 py-12 sm:px-6 sm:py-16 lg:grid-cols-[minmax(0,1fr)_minmax(320px,400px)] lg:px-8 lg:py-20 xl:grid-cols-[minmax(0,1fr)_430px]">
           {/* Text */}

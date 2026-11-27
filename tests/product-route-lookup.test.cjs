@@ -135,17 +135,24 @@ test("product metadata and server-rendered schema describe the visible name, uni
     assert.match(schema.offers.description, /Printing charges are additional/);
     assert.equal(schema.offers.availability, undefined, "do not invent stock availability");
     assert.equal(schema.aggregateRating, undefined, "do not invent ratings");
+    assert.equal(schemas.find(item => item["@type"] === "WebPage").mainEntity["@id"], schema["@id"]);
     assert.equal(schemas.find(item => item["@type"] === "BreadcrumbList").itemListElement[2].name, schema.name);
   }
 });
 
-test("unknown and invalid prices never become free or malformed product offers", async () => {
+test("quote-only products stay indexable without incomplete Product markup or invented offers", async () => {
   for (const price of [0, -1, NaN, Infinity]) {
     const product = { ...publishedProduct, price };
     const h = harness(async () => product);
     const metadata = await h.route.generateMetadata(props(product.slug));
-    const schema = structuredData(await h.route.default(props(product.slug))).find(item => item["@type"] === "Product");
-    assert.equal(schema.offers, undefined);
+    const schemas = structuredData(await h.route.default(props(product.slug)));
+    assert.equal(schemas.some(item => item["@type"] === "Product"), false);
+    const webPage = schemas.find(item => item["@type"] === "WebPage");
+    assert.equal(webPage.url, metadata.alternates.canonical);
+    assert.equal(webPage.mainEntity, undefined, "do not reference an omitted Product node");
+    assert.equal(webPage.primaryImageOfPage.url, `${ORIGIN}/products/g22201.jpg`);
+    assert.ok(schemas.some(item => item["@type"] === "BreadcrumbList"));
+    assert.equal(metadata.robots.index, true);
     assert.equal(metadata.other["product:price:amount"], undefined);
     assert.equal(metadata.other["og:price:amount"], undefined);
   }
@@ -177,14 +184,17 @@ test("products without photos do not advertise logos, placeholders or empty prod
   assert.equal(metadata.twitter.card, "summary");
 });
 
-test("homepage product discovery uses the same image path and visible name without fabricated stock claims", async () => {
+test("homepage lists real product names, links and photos without Product rich-result markup", async () => {
   const h = harness(async () => null, { featuredProducts: [publishedProduct, { ...publishedProduct, slug: "quote-only", price: 0 }] });
   const page = await h.load("components/home/HomeProducts.tsx").default({ description: "Wedding invitations" });
   const schema = structuredData(page).find(item => item["@type"] === "ItemList");
-  const product = schema.itemListElement[0].item;
+  const product = schema.itemListElement[0];
   assert.equal(product.image, `${ORIGIN}/products/g22201.jpg`);
   assert.equal(product.name, "G22201 (Floral wedding invitation)");
-  assert.equal(product.offers.price, 25);
-  assert.equal(product.offers.availability, undefined);
-  assert.equal(schema.itemListElement[1].item.offers, undefined);
+  assert.equal(product.url, `${ORIGIN}/products/g22201`);
+  assert.equal(product["@type"], "ListItem");
+  assert.equal(product.item, undefined);
+  assert.equal(product.offers, undefined);
+  assert.equal(schema.itemListElement[1].url, `${ORIGIN}/products/quote-only`);
+  assert.equal(JSON.stringify(schema).includes('"@type":"Product"'), false);
 });

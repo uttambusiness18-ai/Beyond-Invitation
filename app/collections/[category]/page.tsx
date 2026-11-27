@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import CategoryCollectionPageClient from "@/components/CategoryCollectionPage";
 import JsonLd from "@/components/seo/JsonLd";
 import { getProductPreviewImages, getPublicProductImageUrls } from "@/lib/seo-images";
+import { formatProductName } from "@/lib/product-name";
 import { loadCatalogPage, catalogPagePath, type CatalogSearchParams } from "@/lib/catalog-page";
 import { COLLECTION_PAGE_SIZE } from "@/lib/catalog-browse-options";
 import { getAllCategories, getCategoryBySlug } from "@/lib/products";
@@ -192,20 +193,9 @@ export default async function CollectionPage({ params, searchParams }: PageProps
       itemListElement: products.slice(0, 24).map((product, index) => ({
         "@type": "ListItem",
         position: (pageNumber - 1) * COLLECTION_PAGE_SIZE + index + 1,
+        name: formatProductName(product.name, product.printName),
         url: siteUrl(`/products/${product.slug}`),
-        item: {
-          "@type": "Product",
-          name: product.name,
-          description: product.description || seo.description,
-          image: getPublicProductImageUrls(product.images)[0],
-          url: siteUrl(`/products/${product.slug}`),
-          category: category.name,
-          offers: product.price > 0 ? {
-            "@type": "Offer",
-            priceCurrency: "INR",
-            price: product.price,
-          } : undefined,
-        },
+        image: getPublicProductImageUrls(product.images)[0],
       })),
     },
   };

@@ -288,6 +288,10 @@ export async function generateMetadata({
 const hasHtml = (s: string) => /<\/?[a-z][\s\S]*>/i.test(s);
 
 function buildProductJsonLd(product: ProductLike) {
+  // Quote-only products remain crawlable as WebPages. Product snippets require
+  // a real offer or review; the catalogue has no customer-review data to emit.
+  if (!hasProductPrice(product)) return null;
+
   const productUrl = buildProductUrl(product);
   const categoryLabel = titleCase(product.category);
   const subject = getSubject(product);
@@ -429,6 +433,7 @@ function buildBreadcrumbJsonLd(product: ProductLike) {
 
 function buildWebPageJsonLd(product: ProductLike) {
   const productUrl = buildProductUrl(product);
+  const image = getProductImages(product)[0];
 
   return {
     "@context": "https://schema.org",
@@ -442,9 +447,8 @@ function buildWebPageJsonLd(product: ProductLike) {
       name: BRAND,
       url: getSiteUrl(),
     },
-    mainEntity: {
-      "@id": `${productUrl}#product`,
-    },
+    ...(image ? { primaryImageOfPage: { "@type": "ImageObject", url: image } } : {}),
+    ...(hasProductPrice(product) ? { mainEntity: { "@id": `${productUrl}#product` } } : {}),
   };
 }
 

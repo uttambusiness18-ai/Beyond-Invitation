@@ -118,21 +118,10 @@ export default async function HomeProducts({ description }: { description: strin
     itemListElement: featuredProducts.map((product, index) => ({
       "@type": "ListItem",
       position: index + 1,
+      name: formatProductName(product.name, product.printName),
+      description: product.description || description,
       url: `${siteUrl}/products/${product.slug}`,
-      item: {
-        "@type": "Product",
-        name: formatProductName(product.name, product.printName),
-        description: product.description || description,
-        image: getPublicProductImageUrls(product.images)[0],
-        url: `${siteUrl}/products/${product.slug}`,
-        offers: Number.isFinite(product.price) && product.price > 0
-          ? {
-              "@type": "Offer",
-              priceCurrency: "INR",
-              price: product.price,
-            }
-          : undefined,
-      },
+      image: getPublicProductImageUrls(product.images)[0],
     })),
   };
 

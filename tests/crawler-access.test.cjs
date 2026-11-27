@@ -5,6 +5,7 @@ const test = require("node:test");
 const ts = require("typescript");
 const { NextRequest } = require("next/server");
 const { resolveRobots } = require("next/dist/build/webpack/loaders/metadata/resolve-route-data");
+const { inspectHtml } = require("../scripts/check-crawler-access.cjs");
 
 const ORIGIN = "https://example.test";
 
@@ -30,6 +31,21 @@ const publicPaths = [
   "/privacy-policy", "/refund-policy", "/shipping-policy", "/terms-and-conditions",
 ];
 const privatePaths = ["/admin", "/account", "/checkout", "/my-orders", "/track-order", "/sign-in"];
+
+test("crawler audit accepts readable quote-only pages and rejects incomplete priced-product data", () => {
+  const url = `${ORIGIN}/products/example`;
+  const webpage = { "@context": "https://schema.org", "@type": "WebPage", name: "Example invitation", url };
+  const product = { "@context": "https://schema.org", "@type": "Product", name: "Example invitation", url };
+  const inspect = (nodes, price) => inspectHtml(
+    `<html><head><link rel="canonical" href="${url}">${price === undefined ? "" : `<meta name="product:price:amount" content="${price}">`}</head><body><h1>Example invitation</h1>${nodes.map(node => `<script type="application/ld+json">${JSON.stringify(node)}</script>`).join("")}</body></html>`,
+    url, new Response(), "Googlebot",
+  );
+  assert.doesNotThrow(() => inspect([webpage]));
+  assert.doesNotThrow(() => inspect([webpage, { ...product, offers: { "@type": "Offer", price: 25, priceCurrency: "INR" } }], 25));
+  assert.throws(() => inspect([webpage, product]), /no offer or review/);
+  assert.throws(() => inspect([webpage], 25), /missing Product/);
+  assert.throws(() => inspect([]), /missing server-rendered product WebPage/);
+});
 
 test("robots output welcomes all crawlers while keeping private routes and APIs excluded", () => {
   const route = load("app/robots.ts", { "@/lib/site-config": { getSiteUrl: () => ORIGIN } });

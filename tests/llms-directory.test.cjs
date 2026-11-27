@@ -13,6 +13,7 @@ function directory(enabled) {
   const mocks = {
     "@/lib/site-config": {
       SITE_NAME: "Test Store", BUSINESS_NAME: "Test Store (Test Agency)", BRAND_NAME: "Test Company", SITE_DESCRIPTION: "Test wedding invitations.",
+      DEFAULT_OG_IMAGE: "/logo.png", BUSINESS_IMAGE: "/visit-us/showroom.jpg",
       BUSINESS_ADDRESS_TEXT: "Test Kolkata address", CONTACT: {
         displayPhone: "+91 12345 67890", landline: "033-12345678", email: "contact@example.test",
         googleMaps: "https://maps.example.test/showroom", instagram: "https://instagram.example.test/store", youtube: "https://youtube.example.test/store",

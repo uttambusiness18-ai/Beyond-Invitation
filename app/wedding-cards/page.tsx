@@ -118,16 +118,6 @@ export default async function WeddingCardsPage({ searchParams }: PageProps) {
       { "@type": "State", name: "West Bengal" },
       { "@type": "Country", name: "India" },
     ],
-    makesOffer: [
-      {
-        "@type": "Offer",
-        itemOffered: {
-          "@type": "Product",
-          name: "Wedding Cards",
-          category: "Wedding Invitation Cards",
-        },
-      },
-    ],
   };
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",
@@ -149,22 +139,9 @@ export default async function WeddingCardsPage({ searchParams }: PageProps) {
     itemListElement: initialPage.products.map((product, index) => ({
       "@type": "ListItem",
       position: ((initialPage.pageNumber ?? pageNumber) - 1) * COLLECTION_PAGE_SIZE + index + 1,
+      name: formatProductName(product.name, product.printName),
       url: siteUrl(`/products/${product.slug}`),
-      item: {
-        "@type": "Product",
-        name: formatProductName(product.name, product.printName),
-        description,
-        image: getPublicProductImageUrls([product.image])[0],
-        url: siteUrl(`/products/${product.slug}`),
-        offers:
-          Number.isFinite(product.price) && product.price > 0
-            ? {
-                "@type": "Offer",
-                priceCurrency: "INR",
-                price: product.price,
-              }
-            : undefined,
-      },
+      image: getPublicProductImageUrls([product.image])[0],
     })),
   };
   const faqJsonLd = {

@@ -13,12 +13,13 @@ const routeCases = [
   { file: "app/collections/wedding-card/page.tsx", pathname: "/collections/wedding-card", scope: { subjects: SUBJECTS } },
 ];
 
-function harness({ total = 60, failure, failOffset, photoStart = 0 } = {}) {
+function harness({ total = 60, failure, failOffset, photoStart = 0, productOverrides = [] } = {}) {
   const modules = new Map();
   const requests = [];
   const products = Array.from({ length: total }, (_, index) => ({
     slug: `wedding-card-${index + 1}`, name: `Wedding Card ${index + 1}`,
     description: "Printed wedding invitation", images: index < photoStart ? [] : [`/products/card-${index + 1}.jpg`], price: 50,
+    ...productOverrides[index],
   }));
   const mocks = {
     "server-only": {},
@@ -179,8 +180,34 @@ test("collection previews skip products without photos and never label the logo 
     const schema = descendants(await route.default(props())).find(node => node.props?.data?.["@type"] === "CollectionPage")?.props.data;
     if (scenario.pathname === "/collections/wedding") {
       const items = schema.mainEntity.itemListElement;
-      assert.equal(items[0].item.image, undefined, "no photo must not turn into a logo or another design");
-      assert.equal(items[1].item.image, `${ORIGIN}/products/card-2.jpg`);
+      assert.equal(items[0].image, undefined, "no photo must not turn into a logo or another design");
+      assert.equal(items[1].image, `${ORIGIN}/products/card-2.jpg`);
     }
   }
+});
+
+test("category schema describes every visible entry as a named link with its own photo", async () => {
+  const env = harness({ total: 3, productOverrides: [
+    { price: 0, images: [], printName: "Unpriced floral invitation" },
+    { price: Infinity, images: ["/logo.png"] },
+    { price: 25, images: ["/products/actual-card.jpg"], printName: "Peacock invitation" },
+  ] });
+  const page = await env.load("app/collections/[category]/page.tsx").default(props());
+  const nodes = descendants(page);
+  const schema = nodes.find(node => node.props?.data?.["@type"] === "CollectionPage").props.data;
+  const items = JSON.parse(JSON.stringify(schema.mainEntity.itemListElement));
+  assert.equal(items.length, 3, "unpriced designs remain discoverable");
+  assert.deepEqual(items.map(item => item.position), [1, 2, 3]);
+  assert.deepEqual(items.map(item => item.url), [1, 2, 3].map(index => `${ORIGIN}/products/wedding-card-${index}`));
+  assert.match(items[0].name, /Unpriced floral invitation/);
+  assert.match(items[2].name, /Peacock invitation/);
+  assert.equal(items[0].image, undefined);
+  assert.equal(items[1].image, undefined, "logos are not product photos");
+  assert.equal(items[2].image, `${ORIGIN}/products/actual-card.jpg`);
+  for (const item of items) {
+    assert.equal(item["@type"], "ListItem");
+    assert.equal(item.item, undefined);
+    assert.equal(item.offers, undefined);
+  }
+  assert.doesNotMatch(JSON.stringify(schema), /"@type":"Product"/);
 });

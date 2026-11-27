@@ -5,16 +5,23 @@ import EnquiryForm from "@/components/contact/EnquiryForm";
 import { Card } from "@/components/ui/card";
 import { fetchErpProductBySlug } from "@/lib/catalog";
 import type { EnquiryProduct } from "@/lib/contact";
-import { siteUrl } from "@/lib/site-config";
+import { BUSINESS_NAME, DEFAULT_OG_IMAGE, SITE_NAME, siteUrl } from "@/lib/site-config";
+import { getBusinessIdentity } from "@/lib/business-schema";
+import JsonLd from "@/components/seo/JsonLd";
 import { SHAGUN_ENVELOPES_ENABLED } from "@/lib/storefront-availability";
 
-export const metadata: Metadata = {
-  title: "Contact Us | Beyond Invitation",
-  description: SHAGUN_ENVELOPES_ENABLED
+const title = `Contact ${BUSINESS_NAME}`;
+const description = SHAGUN_ENVELOPES_ENABLED
     ? "Get in touch with Beyond Invitation for wedding invitations, shagun envelopes, and celebration stationery."
-    : "Get in touch with Beyond Invitation for wedding invitations, boxes, and celebration stationery.",
+    : "Get in touch with Beyond Invitation for wedding invitations, boxes, and celebration stationery.";
+const images = [{ url: siteUrl(DEFAULT_OG_IMAGE), width: 2400, height: 2400, alt: `${BUSINESS_NAME} logo` }];
+
+export const metadata: Metadata = {
+  title: { absolute: title },
+  description,
   alternates: { canonical: "/contact" },
-  openGraph: { url: siteUrl("/contact") },
+  openGraph: { title, description, siteName: SITE_NAME, type: "website", url: siteUrl("/contact"), images },
+  twitter: { card: "summary_large_image", title, description, images },
 };
 
 export default async function ContactPage({ searchParams }: {
@@ -43,8 +50,23 @@ export default async function ContactPage({ searchParams }: {
     }
   }
 
+  const business = getBusinessIdentity();
   return (
     <ContactMotion>
+      <JsonLd data={{
+        "@context": "https://schema.org",
+        "@graph": [
+          business,
+          {
+            "@type": "ContactPage",
+            "@id": `${siteUrl("/contact")}#webpage`,
+            url: siteUrl("/contact"),
+            name: title,
+            description,
+            mainEntity: { "@id": business["@id"] },
+          },
+        ],
+      }} />
       <section className="relative bg-paper/60 px-4 py-10 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
         <div className="pointer-events-none absolute -right-40 top-10 h-96 w-96 rounded-full bg-[#dcb162]/10 blur-3xl" />
         <div className="relative mx-auto grid min-w-0 max-w-7xl gap-12 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-16">

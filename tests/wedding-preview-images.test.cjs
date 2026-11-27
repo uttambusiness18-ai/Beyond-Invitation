@@ -62,6 +62,11 @@ function descendants(node) {
   if (Array.isArray(node)) return node.flatMap(descendants);
   return [node, ...descendants(node.props?.children)];
 }
+
+function schemaObjects(value) {
+  if (!value || typeof value !== "object") return [];
+  return [value, ...Object.values(value).flatMap(schemaObjects)];
+}
 const props = params => ({ searchParams: Promise.resolve(params) });
 
 for (const routeName of ["wedding-cards", "wedding-boxes"]) {
@@ -70,6 +75,7 @@ for (const routeName of ["wedding-cards", "wedding-boxes"]) {
       product({ slug: "unphotographed", image: "", price: 0 }),
       product({ slug: "private", image: "/private/files/proof.jpg", price: Infinity }),
       product({ slug: "invitation" }),
+      product({ slug: "logo-only", image: "/brand-preview.png", price: 0 }),
     ] });
     const route = h.load(`app/${routeName}/page.tsx`);
     const metadata = await route.generateMetadata(props({ page: "2" }));
@@ -89,11 +95,21 @@ for (const routeName of ["wedding-cards", "wedding-boxes"]) {
     assert.equal(metadata.openGraph.images[0].height, undefined);
     assert.equal(metadata.robots.index, true);
     assert.equal(itemList.itemListElement[0].position, 25);
-    assert.equal(itemList.itemListElement[0].item.image, undefined, "brand image must not masquerade as a product photo");
-    assert.equal(itemList.itemListElement[1].item.image, undefined);
-    assert.equal(itemList.itemListElement[1].item.offers, undefined);
-    assert.equal(itemList.itemListElement[2].item.image, `${ORIGIN}/products/invitation.jpg`);
-    assert.equal(itemList.itemListElement[2].item.offers.availability, undefined, "stock is not inferred from price");
+    assert.equal(itemList.itemListElement[0].image, undefined, "brand image must not masquerade as a product photo");
+    assert.equal(itemList.itemListElement[1].image, undefined);
+    assert.equal(itemList.itemListElement[2].image, `${ORIGIN}/products/invitation.jpg`);
+    assert.equal(itemList.itemListElement[3].image, undefined, "explicit logo placeholders are omitted");
+    assert.equal(itemList.itemListElement.length, collection.props.initialPage.products.length);
+    for (const [index, item] of itemList.itemListElement.entries()) {
+      assert.equal(item["@type"], "ListItem");
+      assert.equal(item.url, `${ORIGIN}/products/${collection.props.initialPage.products[index].slug}`);
+      assert.match(item.name, /Floral invitation/);
+      assert.equal(item.item, undefined, "collection entries link to products without duplicating rich-result markup");
+      assert.equal(item.offers, undefined);
+    }
+    const renderedSchemas = JSON.parse(JSON.stringify(nodes.filter(node => node.props?.data).map(node => node.props.data)));
+    assert.equal(schemaObjects(renderedSchemas).some(node => node["@type"] === "Product"), false,
+      "collection and business schemas must not declare incomplete Product rich results");
   });
 
   test(`${routeName} image metadata follows clamped pages and normalized filters`, async () => {
@@ -120,7 +136,7 @@ for (const routeName of ["wedding-cards", "wedding-boxes"]) {
     assert.equal(metadata.alternates.canonical, `/${routeName}`);
     assert.equal(metadata.openGraph.images[0].url, `${ORIGIN}/brand-preview.png`);
     assert.equal(metadata.openGraph.images[0].width, undefined);
-    const item = nodes.find(node => node.props?.data?.["@type"] === "ItemList").props.data.itemListElement[0].item;
+    const item = nodes.find(node => node.props?.data?.["@type"] === "ItemList").props.data.itemListElement[0];
     assert.equal(item.image, undefined);
     assert.equal(h.calls.length, 1);
   });
