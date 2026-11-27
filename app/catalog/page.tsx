@@ -1,28 +1,50 @@
 import Link from "next/link";
-import { fetchCatalogProductPage } from "@/lib/catalog-browse";
-import { emptyCatalogPage } from "@/lib/catalog-browse-options";
+import type { Metadata } from "next";
+import { loadCatalogPage, catalogPagePath, type CatalogSearchParams } from "@/lib/catalog-page";
+import { getSiteUrl, siteUrl } from "@/lib/site-config";
+import { COLLECTION_PAGE_SIZE } from "@/lib/catalog-browse-options";
+import { formatProductName } from "@/lib/product-name";
 import PaginatedProductGrid from "@/components/PaginatedProductGrid";
+import JsonLd from "@/components/seo/JsonLd";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = {
-  title: "Product Catalogue – Beyond Invitation",
-  description: "Explore invitation cards, wedding boxes and celebration stationery from Beyond Invitation.",
-};
+type PageProps = { searchParams: Promise<CatalogSearchParams> };
+const description = "Explore invitation cards, wedding boxes and celebration stationery from Beyond Invitation.";
 
-export default async function CatalogPage() {
-  let page = emptyCatalogPage();
-  let failed = false;
+export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
+  const { pageNumber } = await loadCatalogPage(await searchParams);
+  const title = `Product Catalogue${pageNumber > 1 ? ` – Page ${pageNumber}` : ""}`;
+  const canonical = catalogPagePath("/catalog", pageNumber);
+  return {
+    title, description,
+    alternates: { canonical },
+    openGraph: { title, description, url: siteUrl(canonical), type: "website" },
+  };
+}
 
-  try {
-    page = await fetchCatalogProductPage();
-  } catch (error) {
-    console.error("Catalogue page failed:", error);
-    failed = true;
-  }
+export default async function CatalogPage({ searchParams }: PageProps) {
+  // Propagate catalogue outages instead of serving an indexable empty catalogue.
+  const { page, pageNumber } = await loadCatalogPage(await searchParams);
+  const canonical = siteUrl(catalogPagePath("/catalog", pageNumber));
 
   return (
     <main className="min-h-screen overflow-x-clip bg-white">
+      <JsonLd data={{
+        "@context": "https://schema.org",
+        "@type": "CollectionPage",
+        url: canonical,
+        name: "Product Catalogue",
+        description,
+        isPartOf: { "@id": `${getSiteUrl()}/#website` },
+        mainEntity: {
+          "@type": "ItemList",
+          itemListElement: page.products.map((product, index) => ({
+            "@type": "ListItem", position: (pageNumber - 1) * COLLECTION_PAGE_SIZE + index + 1,
+            name: formatProductName(product.name, product.printName), url: siteUrl(`/products/${encodeURIComponent(product.slug)}`),
+          })),
+        },
+      }} />
       <section className="mx-auto max-w-[1800px] px-4 py-12 sm:px-6 lg:px-8">
         <div className="mb-10 text-center">
           <p className="mb-3 text-base font-semibold uppercase tracking-[0.1em] text-gold-ink">
@@ -35,12 +57,7 @@ export default async function CatalogPage() {
             Discover invitations and celebration stationery for your special occasion.
           </p>
         </div>
-        {failed ? (
-          <div className="mx-auto max-w-3xl rounded-2xl border border-gold/30 bg-white p-6 text-center text-ink">
-            <h2 className="mb-2 text-lg font-semibold">Couldn&apos;t load the catalogue</h2>
-            <p className="text-base leading-6">Please try again shortly or contact us for help.</p>
-          </div>
-        ) : page.products.length === 0 ? (
+        {page.products.length === 0 ? (
           <div className="mx-auto max-w-3xl rounded-2xl border border-gold/30 bg-white p-8 text-center shadow-sm">
             <h2 className="font-display text-2xl font-semibold text-carbon">No products found</h2>
             <p className="mt-3 text-base leading-6 text-ink-mid">Our collection is being updated. Please check back soon.</p>
@@ -53,7 +70,7 @@ export default async function CatalogPage() {
                 Back to Home
               </Link>
             </div>
-            <PaginatedProductGrid initialPage={page} />
+            <PaginatedProductGrid initialPage={page} initialPageNumber={pageNumber} paginationPath="/catalog" />
           </>
         )}
       </section>

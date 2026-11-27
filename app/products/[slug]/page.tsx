@@ -11,8 +11,11 @@ import {
 import type { Product } from "@/types";
 import { discountPercent } from "@/types";
 import { formatProductName } from "@/lib/product-name";
+import { getProductQuantityRules } from "@/lib/product-quantity";
 import { BRAND } from "@/components/siteConfig";
-import { BRAND_NAME } from "@/lib/site-config";
+import { BRAND_NAME, getSiteUrl } from "@/lib/site-config";
+import { absoluteUrl } from "@/lib/seo";
+import { getBusinessIdentity } from "@/lib/business-schema";
 import { ProductGrid } from "@/components/ProductGrid";
 import ProductGallery from "@/components/ProductGallery";
 import ProductBuyBox from "@/components/ProductBuyBox";
@@ -24,7 +27,6 @@ interface PageProps {
 }
 
 const NOT_ENTERED = "not yet entered";
-const DEFAULT_SITE_URL = "https://www.beyondinvitation.co.in";
 
 type ProductLike = Product | ErpProduct;
 
@@ -35,53 +37,11 @@ export const dynamicParams = true;
  * reseller pricing reads a per-visitor cookie, which cannot work with
  * static/ISR caching. Dynamic rendering also removes the need for
  * generateStaticParams (nothing is prerendered at build time).
+ * Keep this route and its ancestors free of loading.tsx boundaries so the
+ * required lookup can return HTTP 404/500 before a fallback starts streaming.
+ * Recommendations may stream after the product has been resolved.
  */
 export const dynamic = "force-dynamic";
-
-function ensureAbsoluteUrl(value?: string | null) {
-  const clean = (value || "")
-    .trim()
-    .replace(/^["']|["']$/g, "")
-    .replace(/\/$/, "");
-
-  if (!clean) return "";
-
-  if (clean.startsWith("http://") || clean.startsWith("https://")) {
-    return clean;
-  }
-
-  return `https://${clean}`;
-}
-
-function getSiteUrl() {
-  const fromEnv =
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    process.env.NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL ||
-    process.env.VERCEL_PROJECT_PRODUCTION_URL ||
-    process.env.NEXT_PUBLIC_VERCEL_URL ||
-    process.env.VERCEL_URL ||
-    DEFAULT_SITE_URL;
-
-  return ensureAbsoluteUrl(fromEnv) || DEFAULT_SITE_URL;
-}
-
-function absoluteUrl(pathOrUrl?: string | null) {
-  if (!pathOrUrl) return undefined;
-
-  const value = pathOrUrl.trim();
-
-  if (!value) return undefined;
-
-  if (value.startsWith("http://") || value.startsWith("https://")) {
-    return value;
-  }
-
-  if (value.startsWith("/")) {
-    return `${getSiteUrl()}${value}`;
-  }
-
-  return `${getSiteUrl()}/products/${value}`;
-}
 
 function stripHtml(value?: string | null) {
   if (!value) return "";
@@ -134,8 +94,14 @@ function buildCollectionUrl(product: ProductLike) {
 
 function getProductImages(product: ProductLike) {
   return (product.images || [])
+    // The gallery excludes private ERP files, so discovery must exclude them too.
+    .filter((image) => !image.toLowerCase().includes("/private/files/"))
     .map((image) => absoluteUrl(image))
     .filter((image): image is string => Boolean(image));
+}
+
+function hasProductPrice(product: ProductLike) {
+  return Number.isFinite(product.price) && product.price > 0;
 }
 
 function buildSeoTitle(product: ProductLike) {
@@ -143,7 +109,7 @@ function buildSeoTitle(product: ProductLike) {
   const subject = getSubject(product);
 
   const parts = [
-    product.name,
+    formatProductName(product.name, product.printName),
     subject,
     `${categoryLabel} Invitation Card`,
     "Buy Online India",
@@ -157,12 +123,12 @@ function buildSeoDescription(product: ProductLike) {
   const subject = getSubject(product);
   const cleanDescription = stripHtml(product.description);
 
-  const fallback = `Buy ${product.name} online from ${BRAND}. Premium ${categoryLabel.toLowerCase()} invitation card${
+  const fallback = `Buy ${formatProductName(product.name, product.printName)} online from ${BRAND}. Premium ${categoryLabel.toLowerCase()} invitation card${
     subject ? ` for ${subject} ceremonies` : ""
   } with customisation, quality material, and pan-India delivery.`;
 
   const priceLine =
-    product.price > 0
+    hasProductPrice(product)
       ? ` Price starts at ₹${product.price.toLocaleString("en-IN")}.`
       : "";
 
@@ -259,89 +225,68 @@ function RelatedProductsLoading() {
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
-  try {
-    const { slug } = await params;
-    const product = await resolveProduct(slug);
+  const { slug } = await params;
+  const product = await resolveProduct(slug);
 
-    if (!product) {
-      return {
-        title: `Product Not Found - ${BRAND}`,
-        robots: {
-          index: false,
-          follow: false,
-        },
-      };
-    }
+  if (!product) notFound();
 
-    const siteUrl = getSiteUrl();
-    const productUrl = buildProductUrl(product);
-    const images = getProductImages(product);
-    const title = buildSeoTitle(product);
-    const description = buildSeoDescription(product);
-    const categoryLabel = titleCase(product.category);
+  const siteUrl = getSiteUrl();
+  const productUrl = buildProductUrl(product);
+  const images = getProductImages(product);
+  const title = buildSeoTitle(product);
+  const description = buildSeoDescription(product);
+  const categoryLabel = titleCase(product.category);
 
-    return {
-      metadataBase: new URL(siteUrl),
-      title,
-      description,
-      keywords: buildKeywords(product),
-      alternates: {
-        canonical: productUrl,
-      },
-      robots: {
+  return {
+    metadataBase: new URL(siteUrl),
+    title,
+    description,
+    keywords: buildKeywords(product),
+    alternates: {
+      canonical: productUrl,
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
         index: true,
         follow: true,
-        googleBot: {
-          index: true,
-          follow: true,
-          "max-image-preview": "large",
-          "max-snippet": -1,
-          "max-video-preview": -1,
-        },
+        "max-image-preview": "large",
+        "max-snippet": -1,
+        "max-video-preview": -1,
       },
-      openGraph: {
-        type: "website",
-        siteName: BRAND,
-        locale: "en_IN",
-        url: productUrl,
-        title,
-        description,
-        images: images.map((image) => ({
-          url: image,
-          width: 1200,
-          height: 1200,
-          alt: `${product.name} - ${categoryLabel} invitation card by ${BRAND}`,
-        })),
-      },
-      twitter: {
-        card: images.length > 0 ? "summary_large_image" : "summary",
-        title,
-        description,
-        images: images.slice(0, 1),
-      },
-      other: {
-        "product:brand": BRAND_NAME,
-        "product:retailer_item_id": getSku(product),
-        ...(product.price > 0
-          ? {
-              "product:price:amount": String(product.price),
-              "product:price:currency": "INR",
-              "og:price:amount": String(product.price),
-              "og:price:currency": "INR",
-            }
-          : {}),
-      },
-    };
-  } catch {
-    return {
-      title: BRAND,
-      description: "Premium invitation cards by Beyond Invitation.",
-      robots: {
-        index: false,
-        follow: true,
-      },
-    };
-  }
+    },
+    openGraph: {
+      type: "website",
+      siteName: BRAND,
+      locale: "en_IN",
+      url: productUrl,
+      title,
+      description,
+      images: images.map((image) => ({
+        url: image,
+        alt: `${formatProductName(product.name, product.printName)} - ${categoryLabel} invitation card by ${BRAND}`,
+      })),
+    },
+    twitter: {
+      card: images.length > 0 ? "summary_large_image" : "summary",
+      title,
+      description,
+      images: images.slice(0, 1),
+    },
+    other: {
+      "product:brand": BRAND_NAME,
+      "product:retailer_item_id": getSku(product),
+      ...(hasProductPrice(product)
+        ? {
+            "product:price:amount": String(product.price),
+            "product:price:currency": "INR",
+            "og:price:amount": String(product.price),
+            "og:price:currency": "INR",
+          }
+        : {}),
+    },
+  };
 }
 
 const hasHtml = (s: string) => /<\/?[a-z][\s\S]*>/i.test(s);
@@ -351,10 +296,23 @@ function buildProductJsonLd(product: ProductLike) {
   const categoryLabel = titleCase(product.category);
   const subject = getSubject(product);
   const images = getProductImages(product);
-  const description = buildSeoDescription(product);
+  const description = stripHtml(product.description) || undefined;
   const discount = discountPercent(product);
+  const quantityRules = getProductQuantityRules(product);
 
   const additionalProperty = [
+    {
+      "@type": "PropertyValue",
+      name: "Minimum order quantity",
+      value: quantityRules.minimum,
+      unitText: "pieces",
+    },
+    {
+      "@type": "PropertyValue",
+      name: "Order quantity increment",
+      value: quantityRules.step,
+      unitText: "pieces",
+    },
     subject
       ? {
           "@type": "PropertyValue",
@@ -396,7 +354,8 @@ function buildProductJsonLd(product: ProductLike) {
     "@context": "https://schema.org",
     "@type": "Product",
     "@id": `${productUrl}#product`,
-    name: product.name,
+    name: formatProductName(product.name, product.printName),
+    url: productUrl,
     description,
     image: images,
     sku: getSku(product),
@@ -409,23 +368,34 @@ function buildProductJsonLd(product: ProductLike) {
     material: product.material ? stripHtml(product.material) : undefined,
     additionalProperty,
     offers:
-      product.price > 0
+      hasProductPrice(product)
         ? {
             "@type": "Offer",
             "@id": `${productUrl}#offer`,
             url: productUrl,
             priceCurrency: "INR",
             price: product.price,
-            availability:
-              product.price > 0
-                ? "https://schema.org/InStock"
-                : "https://schema.org/PreOrder",
-            itemCondition: "https://schema.org/NewCondition",
-            seller: {
-              "@type": "Organization",
-              name: BRAND,
+            description: "Price per piece, inclusive of taxes. Printing charges are additional.",
+            eligibleQuantity: {
+              "@type": "QuantitativeValue",
+              minValue: quantityRules.minimum,
+              unitCode: "C62",
+              unitText: "pieces",
             },
-            priceValidUntil: `${new Date().getFullYear() + 1}-12-31`,
+            priceSpecification: {
+              "@type": "UnitPriceSpecification",
+              priceCurrency: "INR",
+              price: product.price,
+              valueAddedTaxIncluded: true,
+              referenceQuantity: {
+                "@type": "QuantitativeValue",
+                value: 1,
+                unitCode: "C62",
+                unitText: "piece",
+              },
+            },
+            itemCondition: "https://schema.org/NewCondition",
+            seller: getBusinessIdentity(),
           }
         : undefined,
   };
@@ -454,7 +424,7 @@ function buildBreadcrumbJsonLd(product: ProductLike) {
       {
         "@type": "ListItem",
         position: 3,
-        name: product.name,
+        name: formatProductName(product.name, product.printName),
         item: productUrl,
       },
     ],
@@ -597,6 +567,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
   const discount = discountPercent(product);
   const categoryLabel = product.category.replace(/-/g, " ");
   const subject = getSubject(product);
+  const quantityRules = getProductQuantityRules(product);
   const dimensionRows = [
     {
       label: "Height",
@@ -722,6 +693,11 @@ export default async function ProductDetailPage({ params }: PageProps) {
                   Inclusive of all taxes
                 </p>
 
+                <p className="mt-3 text-sm leading-relaxed text-ink-mid">
+                  Product code: {getSku(product)}. Minimum order: {quantityRules.minimum} pieces,
+                  in increments of {quantityRules.step}.
+                </p>
+
                 <div className="mt-7">
                   <ProductBuyBox product={product} />
                 </div>
@@ -809,6 +785,10 @@ export default async function ProductDetailPage({ params }: PageProps) {
                       label="Material"
                       value={productDetailValue(product.material)}
                     />
+
+                    {product.includes && (
+                      <SpecRow label="Includes" value={stripHtml(product.includes)} />
+                    )}
                   </ul>
 
                   <p className="mt-4 text-base leading-relaxed text-ink-mid">

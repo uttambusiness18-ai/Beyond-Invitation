@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { ProductSection } from "@/components/ProductGrid";
 import type { Category, Product } from "@/types";
+import { BUSINESS_ADDRESS_TEXT, CONTACT } from "@/lib/site-config";
 import { isStorefrontCollectionVisible, SHAGUN_ENVELOPES_ENABLED } from "@/lib/storefront-availability";
 
 /* ------------------------------------------------------------------ */
@@ -399,8 +400,7 @@ export function Milestones() {
 }
 
 export function OurShowroom() {
-  const address =
-    "Shop No. 8, Indra Kumar Karnani St, China Bazar, B.B.D. Bagh, Kolkata, West Bengal 700001";
+  const address = BUSINESS_ADDRESS_TEXT;
 
   return (
     <section className="bg-white px-4 py-14 sm:px-8 sm:py-16 lg:px-10 xl:px-16">
@@ -431,9 +431,7 @@ export function OurShowroom() {
                 </p>
 
                 <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                    address,
-                  )}`}
+                  href={CONTACT.googleMaps}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="mt-6 inline-flex rounded-full bg-carbon px-6 py-3 text-base font-bold uppercase tracking-[0.1em] text-white transition hover:bg-carbon-dark"

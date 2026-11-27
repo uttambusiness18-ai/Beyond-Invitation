@@ -53,7 +53,7 @@ export default function BengaliWeddingEditorial() {
           <div className="lg:col-span-2">
             <h3 className="mb-2 text-lg font-semibold text-maroon">Visit our Bengali wedding card shop in Kolkata</h3>
             <p>
-              Compare samples, materials and finishes at our showroom at {CHATBOT_SHOWROOM.address}{" "}
+              Compare samples, materials and finishes at our showroom at {CHATBOT_SHOWROOM.address}.{" "}
               <Link href="/visit-us" className={linkClass}>Plan your showroom visit</Link> or continue browsing the{" "}
               <Link href="/wedding-cards" className={linkClass}>wedding card collection</Link> online. We deliver across India;
               check your pincode at checkout and confirm preparation time with the team. Read the{" "}

@@ -3,6 +3,8 @@ import { fetchItemCategoryProductPage } from "@/lib/catalog-item-category";
 import { catalogueErrorMessage } from "@/lib/catalog-errors";
 import { PRODUCTS_PER_PAGE } from "@/lib/product-page";
 import { getSiteUrl } from "@/lib/site-config";
+import { absoluteUrl } from "@/lib/seo";
+import { formatProductName } from "@/lib/product-name";
 import { ProductSection } from "@/components/ProductGrid";
 import { FeatureStrip, SaleCollection } from "@/components/Sections";
 import JsonLd from "@/components/seo/JsonLd";
@@ -10,12 +12,6 @@ import JsonLd from "@/components/seo/JsonLd";
 const TRENDY_PRODUCT_SLUGS = [
   "1308", "1320", "1901", "1902", "1903", "1904", "1905", "1906",
 ];
-
-function getAbsoluteImageUrl(image: string | undefined, siteUrl: string) {
-  if (!image) return undefined;
-  if (image.startsWith("http://") || image.startsWith("https://")) return image;
-  return image.startsWith("/") ? `${siteUrl}${image}` : `${siteUrl}/${image}`;
-}
 
 function ProductSectionSkeleton({
   label,
@@ -125,16 +121,15 @@ export default async function HomeProducts({ description }: { description: strin
       url: `${siteUrl}/products/${product.slug}`,
       item: {
         "@type": "Product",
-        name: product.name,
+        name: formatProductName(product.name, product.printName),
         description: product.description || description,
-        image: getAbsoluteImageUrl(product.images?.[0], siteUrl),
+        image: absoluteUrl(product.images?.[0]),
         url: `${siteUrl}/products/${product.slug}`,
-        offers: product.price > 0
+        offers: Number.isFinite(product.price) && product.price > 0
           ? {
               "@type": "Offer",
               priceCurrency: "INR",
               price: product.price,
-              availability: "https://schema.org/InStock",
             }
           : undefined,
       },

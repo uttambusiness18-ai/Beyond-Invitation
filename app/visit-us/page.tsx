@@ -3,13 +3,12 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { BRAND } from "@/components/siteConfig";
-import { siteUrl } from "@/lib/site-config";
+import { BUSINESS_ADDRESS_TEXT, CONTACT, siteUrl } from "@/lib/site-config";
 import { SHAGUN_ENVELOPES_ENABLED } from "@/lib/storefront-availability";
 
 export const metadata: Metadata = {
   title: `Visit Us | ${BRAND}`,
-  description:
-    "Visit Beyond Invitation / Bharat Agency Wedding Cards Pvt. Ltd. at 8, Jackson Lane, Canning Street, Kolkata - 700001.",
+  description: `Visit Beyond Invitation / Bharat Agency Wedding Cards Pvt. Ltd. at ${BUSINESS_ADDRESS_TEXT}.`,
   alternates: {
     canonical: "/visit-us",
   },
@@ -45,11 +44,7 @@ export default function VisitUsPage() {
                   Address
                 </p>
                 <p className="mt-3 break-words text-base leading-7 text-neutral-800 [overflow-wrap:anywhere]">
-                  8, Jackson Lane,
-                  <br />
-                  Canning Street,
-                  <br />
-                  Kolkata - 700001
+                  {BUSINESS_ADDRESS_TEXT}
                 </p>
               </div>
 
@@ -78,7 +73,7 @@ export default function VisitUsPage() {
               </Link>
 
               <Link
-                href="https://www.google.com/maps/search/?api=1&query=8%20Jackson%20Lane%20Canning%20Street%20Kolkata%20700001"
+                href={CONTACT.googleMaps}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="rounded-full border border-amber-300 bg-white px-6 py-3 text-base font-semibold text-neutral-900 transition hover:bg-amber-100"
@@ -152,7 +147,7 @@ export default function VisitUsPage() {
                   <span className="font-semibold text-neutral-950">
                     Location:
                   </span>{" "}
-                  8, Jackson Lane, Kolkata - 700001
+                  {BUSINESS_ADDRESS_TEXT}
                 </p>
                 <p>
                   <span className="font-semibold text-neutral-950">

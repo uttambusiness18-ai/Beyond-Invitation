@@ -22,7 +22,7 @@ const fixture = () => [
 
 // Execute production readers with an in-memory public catalogue. No live data
 // or writes: filtering and ranges run in database order before responses return.
-function harness({ rows = fixture(), legacy = false, enabled } = {}) {
+function harness({ rows = fixture(), legacy = false, enabled, readResponse, enrichmentError } = {}) {
   assert.equal(typeof enabled, "boolean", "Each test must choose the collection visibility policy");
   const modules = new Map();
   const requests = [];
@@ -57,6 +57,9 @@ function harness({ rows = fixture(), legacy = false, enabled } = {}) {
           if (legacy && table === "v_storefront_products") {
             return Promise.resolve({ data: null, error: { code: "42P01", message: "v_storefront_products does not exist" } }).then(resolve, reject);
           }
+          if (readResponse) {
+            return Promise.resolve().then(() => readResponse(query)).then(resolve, reject);
+          }
           const filtered = rows.filter(row => query.filters.every(filter => filter(row)));
           const data = filtered.slice(query.start, query.end + 1).map(row => query.columns === "subject_key"
             ? { subject_key: row.subject_key } : row);
@@ -85,8 +88,14 @@ function harness({ rows = fixture(), legacy = false, enabled } = {}) {
     "next/cache": { unstable_cache: memo },
     "isomorphic-dompurify": { sanitize: value => value },
     "@/lib/supabase/server": { getSupabaseServerClient: () => client },
-    "@/lib/catalog-titles": { applyCatalogPrintNames: async rows => rows },
-    "@/lib/catalog-pricing": { applyCatalogDetails: async rows => rows },
+    "@/lib/catalog-titles": { applyCatalogPrintNames: async rows => {
+      if (enrichmentError) throw enrichmentError;
+      return rows;
+    } },
+    "@/lib/catalog-pricing": { applyCatalogDetails: async rows => {
+      if (enrichmentError) throw enrichmentError;
+      return rows;
+    } },
     "@/lib/reseller": {
       applyResellerPricingToProducts: async rows => rows,
       applyResellerPricingToProduct: async row => row,
@@ -184,3 +193,52 @@ test("enabling the collection restores all catalogue paths without data changes"
   assert.equal(h.rpcCalls[0].p_subjects, undefined);
   assert.equal(h.requests.some(request => request.columns === "subject_key"), false);
 });
+
+for (const legacy of [false, true]) {
+  const reader = legacy ? "legacy" : "optimized";
+
+  test(`${reader} slug lookup distinguishes hyphenated codes and returns null only for missing products`, async () => {
+    const current = { ...product(1), slug: "g22201", design_no: "G22201" };
+    const h = harness({ legacy, enabled: true, rows: [current] });
+    const catalog = h.load("lib/catalog.ts");
+    assert.equal((await catalog.fetchErpProductBySlug("g22201")).itemCode, "G22201");
+    assert.equal(await catalog.fetchErpProductBySlug("g222-01"), null);
+
+    const other = { ...product(2), slug: "g222-01", design_no: "G222-01" };
+    const both = harness({ legacy, enabled: true, rows: [current, other] }).load("lib/catalog.ts");
+    assert.equal((await both.fetchErpProductBySlug("g222-01")).catalogId, other.id);
+    assert.equal((await both.fetchErpProductBySlug("g22201")).catalogId, current.id);
+  });
+
+  for (const error of [
+    { code: "CATALOGUE_TIMEOUT", message: "Catalogue request timed out" },
+    { code: "42501", message: "permission denied for v_storefront_products" },
+    { code: "PGRST000", message: "Database connection unavailable" },
+  ]) {
+    test(`${reader} slug lookup propagates ${error.code} instead of returning not found or falling back`, async () => {
+      const h = harness({ legacy, enabled: true, readResponse: () => ({ data: null, error }) });
+      await assert.rejects(h.load("lib/catalog.ts").fetchErpProductBySlug("g22201"), {
+        message: `Product catalogue unavailable: ${error.message}`,
+      });
+      assert.deepEqual(h.requests.map(request => request.table), legacy
+        ? ["v_storefront_products", "v_web_products"] : ["v_storefront_products"]);
+    });
+  }
+
+  for (const data of [null, {}, "upstream failure"]) {
+    test(`${reader} slug lookup rejects malformed successful response ${JSON.stringify(data)}`, async () => {
+      const h = harness({ legacy, enabled: true, readResponse: () => ({ data, error: null }) });
+      await assert.rejects(h.load("lib/catalog.ts").fetchErpProductBySlug("g22201"), /invalid product list/);
+    });
+  }
+
+  test(`${reader} slug lookup propagates network and product enrichment failures`, async () => {
+    const network = new Error("fetch failed");
+    const h = harness({ legacy, enabled: true, readResponse: () => { throw network; } });
+    await assert.rejects(h.load("lib/catalog.ts").fetchErpProductBySlug("design-10"), error => error === network);
+
+    const enrichmentError = new Error("Product prices or titles unavailable");
+    const enriched = harness({ legacy, enabled: true, enrichmentError });
+    await assert.rejects(enriched.load("lib/catalog.ts").fetchErpProductBySlug("design-10"), error => error === enrichmentError);
+  });
+}

@@ -1,19 +1,17 @@
 import { hasMarketingConsent } from "@/lib/cookie-consent";
 import type { PaymentReceipt } from "@/lib/payment-receipt-types";
+import {
+  GOOGLE_TAG_ID,
+  GOOGLE_TAG_SCRIPT_ID,
+  GOOGLE_TAG_BOOTSTRAP_ID,
+  initializeGoogleTag,
+} from "@/lib/google-tag";
 
-export const GOOGLE_TAG_ID = "GTM-PM7X2BZK";
+export { GOOGLE_TAG_ID, GOOGLE_TAG_SCRIPT_ID } from "@/lib/google-tag";
 export const GOOGLE_ANALYTICS_ID = "G-X379LZMKP7";
 export const GOOGLE_ADS_ID = "AW-18574685891";
 export const GOOGLE_ADS_PURCHASE_DESTINATION = `${GOOGLE_ADS_ID}/4scPCKSbrrsdEMPtjJlF`;
 export const GOOGLE_ADS_LEAD_DESTINATION = `${GOOGLE_ADS_ID}/39GSCNLBy7wdEMPtjJlF`;
-export const GOOGLE_TAG_SCRIPT_ID = "beyond-google-tag";
-
-declare global {
-  interface Window {
-    dataLayer?: unknown[];
-    gtag?: (...args: unknown[]) => void;
-  }
-}
 
 type PurchaseReceipt = Pick<
   PaymentReceipt,
@@ -34,7 +32,6 @@ const ATTRIBUTION_PARAMS = [
   "utm_content",
 ];
 const queuedPurchases = new Set<string>();
-let initialized = false;
 let configured = false;
 let analyticsConfigured = false;
 let previousConsent: boolean | undefined;
@@ -79,23 +76,8 @@ export function syncGoogleTracking(): boolean {
   )
     return false;
   try {
-    window.dataLayer = window.dataLayer || [];
-    window.gtag =
-      window.gtag ||
-      function () {
-        window.dataLayer!.push(arguments);
-      };
-    if (!initialized) {
-      window.gtag("consent", "default", consentSettings(false));
-      window.gtag("set", {
-        allow_google_signals: false,
-        allow_ad_personalization_signals: false,
-        allow_enhanced_conversions: false,
-        ads_data_redaction: true,
-        url_passthrough: false,
-      });
-      initialized = true;
-    }
+    if (!initializeGoogleTag(GOOGLE_TAG_ID, GOOGLE_TAG_SCRIPT_ID, GOOGLE_TAG_BOOTSTRAP_ID, window, document) || !window.gtag)
+      return false;
     const accepted = hasMarketingConsent();
     const location = googleTrackingUrl(window.location.href, accepted);
     const referrer = googleTrackingUrl(
@@ -111,7 +93,6 @@ export function syncGoogleTracking(): boolean {
       previousConsent = accepted;
     }
     if (!configured) {
-      window.gtag("js", new Date());
       window.gtag("config", GOOGLE_ADS_ID);
       configured = true;
     }
@@ -120,15 +101,6 @@ export function syncGoogleTracking(): boolean {
       // Keep GA enhanced history page views disabled to avoid duplicate views.
       window.gtag("config", GOOGLE_ANALYTICS_ID, { send_page_view: false });
       analyticsConfigured = true;
-    }
-    if (!document.getElementById(GOOGLE_TAG_SCRIPT_ID)) {
-      const script = document.createElement("script");
-      script.id = GOOGLE_TAG_SCRIPT_ID;
-      script.async = true;
-      script.src = `https://www.googletagmanager.com/gtm.js?id=${GOOGLE_TAG_ID}`;
-      // A later visit/consent update can retry if a transient loading error occurs.
-      script.onerror = () => script.remove();
-      document.head.appendChild(script);
     }
     if (!accepted) {
       lastTrackedPage = undefined;

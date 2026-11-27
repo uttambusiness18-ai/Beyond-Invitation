@@ -7,6 +7,7 @@ import "./globals.css";
 import { SITE_NAME } from "@/components/siteConfig";
 import { getSiteUrl, DEFAULT_OG_IMAGE } from "@/lib/site-config";
 import { SHAGUN_ENVELOPES_ENABLED } from "@/lib/storefront-availability";
+import GoogleTagHead from "@/components/GoogleTagHead";
 
 import StorefrontShell from "@/components/StorefrontShell";
 import ChatWidgetLoader from "@/components/chatbot/ChatWidgetLoader";
@@ -82,6 +83,9 @@ export const metadata: Metadata = {
   robots: {
     index: true,
     follow: true,
+    "max-image-preview": "large",
+    "max-snippet": -1,
+    "max-video-preview": -1,
   },
 
   formatDetection: {
@@ -100,6 +104,7 @@ interface RootLayoutProps {
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en" className={cn("font-sans", inter.variable, assistant.variable)}>
+      <GoogleTagHead />
       {/* Suppress body-only attribute warnings from extensions such as ColorZilla. */}
       <body
         suppressHydrationWarning

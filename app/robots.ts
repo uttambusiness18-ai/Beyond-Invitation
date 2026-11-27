@@ -7,16 +7,12 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
       {
+        // Applies to every search engine and AI crawler, including new agents.
+        // Public pages and their assets are crawlable without a bot allowlist.
         userAgent: "*",
-        allow: [
-          "/",
-          "/wedding-cards",
-          "/collections/",
-          "/products/",
-          "/about",
-          "/contact",
-          "/visit-us",
-        ],
+        allow: "/",
+        // Keep customer-specific, transactional and administrative URLs out of
+        // crawl discovery. These rules do not replace server authorization.
         disallow: [
           "/admin",
           "/api/",
@@ -29,6 +25,7 @@ export default function robots(): MetadataRoute.Robots {
           "/cart",
           "/wishlist",
           "/my-orders",
+          "/track-order",
           "/search",
           "/erp-debug",
         ],

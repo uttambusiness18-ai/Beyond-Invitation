@@ -113,7 +113,10 @@ export async function readStorefrontRows(
     if (missingContract(error, resource)) return null;
     throw new Error(`Product catalogue unavailable: ${catalogueErrorMessage(error)}`);
   }
-  return applyCatalogPrintNames(data ?? []);
+  if (!Array.isArray(data)) {
+    throw new Error("Product catalogue returned an invalid product list.");
+  }
+  return applyCatalogPrintNames(data);
 }
 
 /** Returns base prices; the margin parameter only controls filtering and order. */

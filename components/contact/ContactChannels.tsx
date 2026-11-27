@@ -8,7 +8,7 @@ import {
   Phone,
 } from "lucide-react";
 import { buildWhatsAppUrl, type EnquiryProduct } from "@/lib/contact";
-import { BUSINESS_ADDRESS, CONTACT } from "@/lib/site-config";
+import { BUSINESS_ADDRESS_TEXT, CONTACT } from "@/lib/site-config";
 
 const rowClass =
   "group flex min-w-0 items-center gap-4 rounded-2xl border border-gold/20 bg-white/80 px-5 py-4 transition hover:border-gold/50 hover:shadow-sm focus-within:border-gold/50";
@@ -42,7 +42,7 @@ export default function ContactChannels({
   const whatsappText = enquiryProduct
     ? `Hello Beyond Invitation, I would like a price for design ${enquiryProduct.designNo}.`
     : "Hello Beyond Invitation, I would like to know more.";
-  const address = `${BUSINESS_ADDRESS.streetAddress}, ${BUSINESS_ADDRESS.addressLocality} ${BUSINESS_ADDRESS.postalCode}`;
+  const address = BUSINESS_ADDRESS_TEXT;
 
   return (
     <nav aria-label="Contact channels" className="space-y-3">
@@ -106,7 +106,7 @@ export default function ContactChannels({
         </span>
         <div className="min-w-0">
           <a
-            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`}
+            href={CONTACT.googleMaps}
             target="_blank"
             rel="noopener noreferrer"
             className="block hover:underline"

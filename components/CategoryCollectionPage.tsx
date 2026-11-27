@@ -11,6 +11,7 @@ type CategoryCollectionPageClientProps = {
   categoryName: string;
   categoryDescription?: string;
   initialPage: CatalogBrowsePage;
+  initialPageNumber?: number;
   category: ProductCategory;
   errorMessage?: string;
 };
@@ -19,6 +20,7 @@ export default function CategoryCollectionPageClient({
   categoryName,
   categoryDescription = "",
   initialPage,
+  initialPageNumber,
   category,
   errorMessage = "",
 }: CategoryCollectionPageClientProps) {
@@ -145,7 +147,7 @@ export default function CategoryCollectionPageClient({
               </p>
             </div>
           ) : (
-            <PaginatedProductGrid initialPage={initialPage} scope={{ category }} categoryLabel={categoryName} />
+            <PaginatedProductGrid initialPage={initialPage} initialPageNumber={initialPageNumber} paginationPath={`/collections/${category}`} scope={{ category }} categoryLabel={categoryName} />
           )}
         </div>
       </section>

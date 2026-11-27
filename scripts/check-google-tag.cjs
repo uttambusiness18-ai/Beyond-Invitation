@@ -16,6 +16,43 @@ const orderId = "11111111-2222-4333-8444-555555555555";
 const secretMarkers = ["PRIVATE_TRACKING_CAPABILITY", "PRIVATE_RECEIPT_CAPABILITY", "PRIVATE_QUERY_VALUE", "fixture-buyer@example.test"];
 const delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
+async function checkHeadBootstrap(window, load, requests, cookieWrites, label, privateMarkers = secretMarkers) {
+  const tag = load("lib/google-tag.ts");
+  const bootstrap = window.document.createElement("script");
+  bootstrap.id = tag.GOOGLE_TAG_BOOTSTRAP_ID;
+  bootstrap.textContent = tag.GOOGLE_TAG_BOOTSTRAP;
+  window.document.head.prepend(bootstrap);
+  const commands = () => (window.dataLayer || []).map(args => Array.from(args));
+  assert.deepEqual(JSON.parse(JSON.stringify(commands()[0])), ["consent", "default", {
+    ad_storage: "denied", analytics_storage: "denied", ad_user_data: "denied", ad_personalization: "denied",
+  }], `${label}: the head bootstrap denies storage before loading Google`);
+  assert.equal(commands().filter(args => args[0] === "js").length, 1, `${label}: the head bootstrap initializes Google once`);
+  assert.equal(window.document.querySelectorAll("#beyond-google-tag").length, 1, `${label}: Google loads before hydration`);
+  // Let the real runtime finish and flush queued work while React has not yet
+  // read consent or configured destinations. Interceptors are already installed.
+  await delay(5500);
+  assert.equal(requests.filter(request => new URL(request.url).pathname.endsWith("/g/collect")).length, 0,
+    `${label}: no Analytics requests before hydration grants consent`);
+  assert.equal(cookieWrites.filter(cookie => /^_(?:ga|gcl)/.test(cookie)).length, 0,
+    `${label}: the early loader writes no optional Google cookies`);
+  assert.equal(commands().filter(args => args[0] === "config").length, 0,
+    `${label}: the head bootstrap leaves destination configuration to the hydrated tracker`);
+  const captured = decodeURIComponent(JSON.stringify(requests));
+  for (const marker of privateMarkers) assert.ok(!captured.includes(marker), `${label}: the early loader leaked ${marker}`);
+}
+
+function checkSingleInitialization(window, tracking, label) {
+  const commands = (window.dataLayer || []).map(args => Array.from(args));
+  assert.equal(commands.filter(args => args[0] === "js").length, 1, `${label}: hydration must reuse the head initialization`);
+  assert.equal(commands.filter(args => args[0] === "consent" && args[1] === "default").length, 1,
+    `${label}: hydration must not reset the default consent`);
+  for (const destination of [tracking.GOOGLE_ADS_ID, tracking.GOOGLE_ANALYTICS_ID]) {
+    assert.equal(commands.filter(args => args[0] === "config" && args[1] === destination).length, 1,
+      `${label}: configure ${destination} exactly once`);
+  }
+  assert.equal(window.document.querySelectorAll("#beyond-google-tag").length, 1, `${label}: retain a single Google loader`);
+}
+
 async function checkCookieless(runtimes, runtimeKey, choice) {
   const requests = [];
   const cookieWrites = [];
@@ -106,6 +143,7 @@ async function checkCookieless(runtimes, runtimeKey, choice) {
     const consent = load("lib/cookie-consent.ts");
     const tracking = load("lib/google-tracking.ts");
     if (choice === "declined") consent.saveCookieConsent("declined");
+    await checkHeadBootstrap(window, load, requests, cookieWrites, choice, [...secretMarkers, ...existingIdentifiers]);
     const purchase = { id: orderId, paymentStatus: "paid", testMode: false, amountPaise: 125000, currency: "INR" };
     assert.equal(tracking.syncGoogleTracking(), true, `${choice}: load the shared tag with denied storage`);
     assert.equal(tracking.trackPurchaseConversion({ ...purchase, paymentStatus: "pending" }), false);
@@ -156,6 +194,7 @@ async function checkCookieless(runtimes, runtimeKey, choice) {
     assert.equal(purchaseEvents.length, 1);
     for (let attempt = 0; attempt < 100 && !analyticsRequests().length; attempt += 1) await delay(100);
     assert.ok(analyticsRequests().length > 0, `${choice}: Analytics starts after acceptance`);
+    checkSingleInitialization(window, tracking, choice);
     return { consent: choice, interceptedPurchaseRequests: 1, interceptedLeadRequests: 1, deniedAnalyticsRequests: 0, deniedRequests, googleCookieWrites: 0, reusedStoredIdentifiers: false };
   } finally {
     dom.window.close();
@@ -179,6 +218,7 @@ async function main() {
   })));
   const cookieless = await Promise.all(["no-choice", "declined"].map(choice => checkCookieless(runtimes, runtimeKey, choice)));
   const requests = [];
+  const cookieWrites = [];
   let tagLoads = 0;
   let analyticsLoads = 0;
   class OfflineResources extends ResourceLoader {
@@ -203,6 +243,11 @@ async function main() {
   });
   try {
     const window = dom.window;
+    const cookieDescriptor = Object.getOwnPropertyDescriptor(window.Document.prototype, "cookie");
+    Object.defineProperty(window.document, "cookie", {
+      get() { return cookieDescriptor.get.call(this); },
+      set(value) { cookieWrites.push(String(value)); cookieDescriptor.set.call(this, value); },
+    });
     window.fetch = async (url, options = {}) => {
       requests.push({ type: "fetch", url: String(url), body: String(options.body || "") });
       return { ok: true, status: 200, text: async () => "", json: async () => ({}) };
@@ -258,6 +303,7 @@ async function main() {
     const tracking = load("lib/google-tracking.ts");
     const purchase = { id: orderId, paymentStatus: "paid", testMode: false, amountPaise: 125000, currency: "INR" };
     consent.saveCookieConsent("accepted");
+    await checkHeadBootstrap(window, load, requests, cookieWrites, "accepted");
     assert.equal(tracking.syncGoogleTracking(), true);
     assert.equal(tracking.trackPurchaseConversion({ ...purchase, paymentStatus: "pending" }), false);
     assert.equal(tracking.trackPurchaseConversion({ ...purchase, testMode: true }), false);
@@ -335,10 +381,12 @@ async function main() {
     assert.equal(leadConversions().length, 1, "Client navigation and declined consent must not add lead conversions");
     assert.equal(tagLoads, 1, "There must be one shared Google tag loader");
     assert.equal(analyticsLoads, 1, "The Google runtime must load its GA4 destination once");
+    checkSingleInitialization(window, tracking, "accepted");
     const captured = decodeURIComponent(JSON.stringify(requests));
     for (const marker of secretMarkers) assert.ok(!captured.includes(marker), `Tracking leaked test marker: ${marker}`);
     console.log(JSON.stringify({
       passed: true,
+      headBootstrapCheckedBeforeHydration: true,
       cookieless,
       downloadedTag: tracking.GOOGLE_TAG_ID,
       analyticsDestination: tracking.GOOGLE_ANALYTICS_ID,

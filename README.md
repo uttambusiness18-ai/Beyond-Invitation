@@ -595,6 +595,15 @@ The storefront loads Google container `GTM-PM7X2BZK`, which is connected to
 `AW-18574685891/39GSCNLBy7wdEMPtjJlF`. Configuration is in `lib/google-tracking.ts`;
 no extra environment variables or second Google loader are required.
 
+The shared root layout renders `GoogleTagHead`, which puts the Google bootstrap
+immediately after the opening `<head>` in the initial HTML. It establishes denied
+consent and sanitized URLs before loading the existing Google runtime, without
+waiting for React hydration. The client tracker reuses that initialization and
+loader; it still handles consent changes, page views, and conversions. The
+bootstrap remains inactive on admin routes. `GoogleTagHead` writes its trusted
+inline HTML only on the server; the browser leaves head contents to React so
+navigation cannot erase Next.js metadata or load the tag again.
+
 Analytics sends a `page_view` after optional-cookie acceptance and on storefront
 route changes, including client navigation. Repeated renders and purchase checks
 do not repeat the same view. Admin routes are excluded. Page and referring URLs
@@ -657,6 +666,11 @@ server-to-server conversion integration.
 
 Verification:
 
+- `node scripts/check-google-tag-head.cjs` verifies placement and execution in the
+  production HTML after `npm run build`. Pass full page URLs to check dynamically
+  rendered routes too. It executes only the bootstrap, without contacting Google.
+- `node --test tests/google-tag-head.test.cjs` verifies head placement, hydration,
+  and metadata preservation during navigation.
 - `node --test tests/google-tracking.test.cjs tests/enquiry-form.test.cjs tests/payment-result-tracking.test.cjs`
 - `node scripts/check-google-tag.cjs` checks the currently published Google runtime
   for Analytics views, Ads purchases, and lead submissions with all measurement
@@ -784,7 +798,7 @@ The storefront assistant is mounted once in the root layout. Its browser-only la
 
 `POST /api/chat` accepts only recent text messages and a public page path. It retains the last eight messages, validates the latest user message at 1–500 characters, strips markup, and removes query/hash/private path context. It never adds customer identity, cookies, IP addresses or auth details to Gemini requests. Conversation display state lives in the browser's `sessionStorage`; there are no database writes or server chat logs. Only fixed diagnostics, provider error status, and catalogue size are logged.
 
-Business facts live in `data/chatbot-knowledge.ts`. Keep its Jackson Lane address independent of the older address in other site configuration. Missing facts are explicitly marked `NOT PROVIDED`. Catalogue reads go through `lib/products.ts`, using the same visitor pricing as storefront listings; model-returned slugs are checked against that catalogue before real card data is returned. The text context caches for 60 seconds. Above 25,000 estimated tokens, it sends the subject header and up to 60 search results instead of the full list.
+Business facts live in `data/chatbot-knowledge.ts`. The showroom address is shared through `BUSINESS_ADDRESS_TEXT` in `lib/site-config.ts`, derived from the same `BUSINESS_ADDRESS` used for structured data. Missing facts are explicitly marked `NOT PROVIDED`. Catalogue reads go through `lib/products.ts`, using the same visitor pricing as storefront listings; model-returned slugs are checked against that catalogue before real card data is returned. The text context caches for 60 seconds. Above 25,000 estimated tokens, it sends the subject header and up to 60 search results instead of the full list.
 
 Each admitted message makes one Gemini `generateContent` call: JSON schema output, 600 maximum output tokens, minimum thinking, a 15-second timeout, retries and automatic continuation disabled. Temperature is requested at 0.3; newer models may ignore sampling overrides according to Google's current model documentation. Provider request storage is disabled. Failures return HTTP 200 with the fixed WhatsApp/showroom fallback; malformed customer requests return 400 with a short validation message.
 
@@ -1153,6 +1167,36 @@ Keep secrets outside Git.
 This repository does not currently declare an open-source license.
 
 Unless a license is added, treat the source code and business assets as proprietary to the repository owner / Beyond Invitation.
+
+## Search and AI crawler verification
+
+The public storefront uses the same HTML for visitors and crawlers. `robots.txt`
+allows all crawler identities to access public pages and assets; account,
+checkout, administration and API paths retain their existing exclusions.
+
+Run the read-only HTTP audit against a running local server or the deployed site:
+
+```bash
+node scripts/check-crawler-access.cjs http://127.0.0.1:3000
+node scripts/check-crawler-access.cjs https://www.beyondinvitation.co.in
+```
+
+This bounded check inspects robots rules for known and future crawler names,
+server-rendered product details and links, canonical URLs, catalogue pagination,
+the sitemap and the optional `/llms.txt` navigation index. It sends at most 19
+requests, three at a time, without executing page JavaScript. Set
+`CRAWLER_CHECK_TIMEOUT_MS` between 1 and 60000 to adjust its 30-second request
+timeout. `llms.txt` is a convenience for tools that choose to read it; it does not
+control crawler permissions or guarantee inclusion in any AI system.
+
+Successful requests with a crawler User-Agent identify obvious application or
+hosting blocks, but do not prove access from the provider's actual IP addresses.
+After deploying, inspect Vercel/CDN firewall and bot-protection settings and logs
+for the real crawlers. Submit `/sitemap.xml` in Google Search Console and Bing
+Webmaster Tools, and use their URL inspection tools to verify indexing. Product
+listing feeds and merchant-account setup require separate provider configuration.
+Crawler access and valid structured data make pages eligible for discovery;
+individual search engines and AI services decide indexing, citations and ranking.
 
 ---
 

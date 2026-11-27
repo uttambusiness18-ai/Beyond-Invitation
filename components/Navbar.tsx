@@ -57,10 +57,6 @@ const allNavMenu: NavItem[] = [
     label: "Shagun Envelopes",
     href: "/collections/shagun-envelopes",
   },
-  {
-    label: "Shagun Boxes",
-    href: "/collections/shagun-boxes",
-  },
   { label: "Blogs", href: "/blog" },
 ];
 

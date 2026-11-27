@@ -8,7 +8,10 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { applyCatalogDetails } from "@/lib/catalog-pricing";
 import { PRODUCTS_PER_PAGE } from "@/lib/product-page";
 import { readStorefrontPage, readStorefrontRows } from "@/lib/storefront-data";
-import { HIDDEN_STOREFRONT_SUBJECTS, isStorefrontSubjectVisible } from "@/lib/storefront-availability";
+import {
+  HIDDEN_STOREFRONT_SUBJECTS,
+  isStorefrontSubjectVisible,
+} from "@/lib/storefront-availability";
 import {
   selectSimilarProducts,
   type SimilarProduct,
@@ -174,7 +177,9 @@ export function mapCatalogRowToProduct(row: WebProductRow): CatalogProduct {
 export async function resolveCatalogProducts(
   rows: WebProductRow[],
 ): Promise<CatalogProduct[]> {
-  const resolvedRows = await applyCatalogDetails(rows.filter((row) => isStorefrontSubjectVisible(row.subject)));
+  const resolvedRows = await applyCatalogDetails(
+    rows.filter((row) => isStorefrontSubjectVisible(row.subject)),
+  );
   return resolvedRows.map(mapCatalogRowToProduct);
 }
 
@@ -229,7 +234,10 @@ const readCatalogProductBySlug = unstable_cache(
 
     if (error)
       throw new Error(`Product catalogue unavailable: ${error.message}`);
-    if (!data?.length) return null;
+    if (!Array.isArray(data)) {
+      throw new Error("Product catalogue returned an invalid product list.");
+    }
+    if (!data.length) return null;
 
     return (await resolveCatalogProducts(data))[0] ?? null;
   },
@@ -250,10 +258,14 @@ const readCatalogProductsBySlugs = unstable_cache(
       .in("slug", slugs)
       .limit(slugs.length)
       .returns<WebProductRow[]>();
-    if (error) throw new Error(`Product catalogue unavailable: ${error.message}`);
+    if (error)
+      throw new Error(`Product catalogue unavailable: ${error.message}`);
     return resolveCatalogProducts(data ?? []);
   },
-  ["catalogProductsBySlugs-v2-visibility", HIDDEN_STOREFRONT_SUBJECTS.join("|")],
+  [
+    "catalogProductsBySlugs-v2-visibility",
+    HIDDEN_STOREFRONT_SUBJECTS.join("|"),
+  ],
   { revalidate: 60, tags: ["catalogue"] },
 );
 
@@ -281,7 +293,8 @@ const readCatalogProductPage = unstable_cache(
       };
     if (pricedOnly || HIDDEN_STOREFRONT_SUBJECTS.length) {
       const products = (await readCatalogProducts()).filter(
-        (product) => !pricedOnly || (Number.isFinite(product.price) && product.price > 0),
+        (product) =>
+          !pricedOnly || (Number.isFinite(product.price) && product.price > 0),
       );
       const end = offset + PRODUCTS_PER_PAGE;
       return {
@@ -306,9 +319,7 @@ const readCatalogProductPage = unstable_cache(
 
     const rows = data ?? [];
     return {
-      products: rows.length
-        ? await resolveCatalogProducts(rows)
-        : [],
+      products: rows.length ? await resolveCatalogProducts(rows) : [],
       // Advance by source rows, even if an item was unpublished during
       // enrichment. Advancing by the surviving count would repeat products.
       nextOffset:
@@ -316,7 +327,11 @@ const readCatalogProductPage = unstable_cache(
       total: count,
     };
   },
-  ["catalogProductPage-v6-visibility", String(PRODUCTS_PER_PAGE), HIDDEN_STOREFRONT_SUBJECTS.join("|")],
+  [
+    "catalogProductPage-v6-visibility",
+    String(PRODUCTS_PER_PAGE),
+    HIDDEN_STOREFRONT_SUBJECTS.join("|"),
+  ],
   { revalidate: 60, tags: ["catalogue"] },
 );
 
@@ -394,8 +409,12 @@ export const fetchErpProductBySlug = cache(
 );
 
 /** Preserve curated order, skipping duplicate and unpublished product slugs. */
-export async function fetchErpProductsBySlugs(slugs: string[]): Promise<CatalogProduct[]> {
-  const requested = [...new Set(slugs.map((slug) => slug.trim()).filter(Boolean))];
+export async function fetchErpProductsBySlugs(
+  slugs: string[],
+): Promise<CatalogProduct[]> {
+  const requested = [
+    ...new Set(slugs.map((slug) => slug.trim()).filter(Boolean)),
+  ];
   if (!requested.length) return [];
   const products = await readCatalogProductsBySlugs(requested);
   const bySlug = new Map(products.map((product) => [product.slug, product]));

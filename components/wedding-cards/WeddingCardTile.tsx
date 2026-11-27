@@ -11,11 +11,9 @@ export default function WeddingCardTile({
   product: BrowserProduct;
   priority?: boolean;
 }) {
-  const named =
-    !!product.name.trim() && product.name.trim() !== product.designNo;
   const cardProduct: Product & { subject: string; minOrderQty: number | null } = {
     slug: product.slug,
-    name: named ? product.name : "Design",
+    name: product.name.trim() || product.designNo,
     price: product.price,
     mrp: product.mrp,
     images: product.image ? [product.image] : [],

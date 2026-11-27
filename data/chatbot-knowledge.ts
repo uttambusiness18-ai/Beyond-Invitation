@@ -1,22 +1,25 @@
 import { SHAGUN_ENVELOPES_ENABLED } from "@/lib/storefront-availability";
+import { BRAND_NAME, BUSINESS_NAME, BUSINESS_ADDRESS_TEXT, CONTACT } from "@/lib/site-config";
 
 // Public facts only. Sources: app/visit-us/page.tsx, components/Footer.tsx,
 // lib/faq.ts, app/about/page.tsx, app/terms-and-conditions/page.tsx,
 // app/shipping-policy/page.tsx, app/refund-policy/page.tsx and README.md.
-// Keep the showroom address independent of the outdated BUSINESS_ADDRESS.
+// Share the canonical showroom address with the website and structured data.
 export const CHATBOT_SHOWROOM: {
   address: string;
   hours: string | null;
   whatsappUrl: string;
+  googleMapsUrl: string;
   phone: string;
   email: string;
 } = {
-  address: "8, Jackson Lane, Canning Street, Kolkata 700001.",
+  address: BUSINESS_ADDRESS_TEXT,
   hours: null,
   whatsappUrl:
     "https://wa.me/917044815488?text=Hello%20Beyond%20Invitation%2C%20I%20would%20like%20to%20know%20more.",
-  phone: "+91 70448 15488",
-  email: "contact@khushionline.net",
+  googleMapsUrl: CONTACT.googleMaps,
+  phone: CONTACT.displayPhone,
+  email: CONTACT.email,
 };
 
 export const CHATBOT_MISSING_FACTS = [
@@ -26,12 +29,15 @@ export const CHATBOT_MISSING_FACTS = [
 ] as const;
 
 export const CHATBOT_KNOWLEDGE = `
-Brand: Beyond Invitation, a brand of Bharat Agency Wedding Cards Pvt. Ltd.
+Brand: ${BUSINESS_NAME}, a brand of ${BRAND_NAME}
 Products: Wedding invitation cards, including Hindu, Muslim and Christian cards; ${SHAGUN_ENVELOPES_ENABLED ? "shagun envelopes; " : ""}wedding boxes; rakhi products; festive gifting stationery and packaging.
 ${SHAGUN_ENVELOPES_ENABLED ? "" : "Website availability: Shagun envelopes are temporarily unavailable on the website. Do not recommend them or promise a return date or showroom availability."}
 Showroom address: ${CHATBOT_SHOWROOM.address}
-Phone / WhatsApp: ${CHATBOT_SHOWROOM.phone}. Landline: 033-22428918.
+Phone / WhatsApp: ${CHATBOT_SHOWROOM.phone}. Landline: ${CONTACT.landline}.
 Email: ${CHATBOT_SHOWROOM.email}
+Google Maps business profile: ${CHATBOT_SHOWROOM.googleMapsUrl}
+Instagram profile: ${CONTACT.instagram}
+YouTube channel: ${CONTACT.youtube}
 Showroom opening hours and days: NOT PROVIDED.
 Delivery areas: Across India. Online checkout accepts Indian delivery addresses only. Customers can check pincode availability and a shipping estimate in the cart or at checkout; the final shipping charge appears before payment.
 Preparation / dispatch estimates: The shipping policy lists 3–4 days for our manufactured cards without printing. Printing requires additional time; during peak season, allow 10–12 days after approval of the printing matter. Orders are processed and dispatched on business days, excluding Sundays and public holidays. These are estimates, not delivery promises. The team must confirm timing for the design, quantity and event date.

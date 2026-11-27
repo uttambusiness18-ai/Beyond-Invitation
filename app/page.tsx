@@ -7,17 +7,16 @@ import { getAllCategories } from "@/lib/products";
 
 import JsonLd from "@/components/seo/JsonLd";
 import { getSiteUrl, DEFAULT_OG_IMAGE, SITE_NAME } from "@/lib/site-config";
+import { getBusinessIdentity } from "@/lib/business-schema";
 import { SHAGUN_ENVELOPES_ENABLED } from "@/lib/storefront-availability";
 import { absoluteUrl } from "@/lib/seo";
 
-import {
-  CelebrationGrid,
-  WhyUs,
-  OurShowroom,
-} from "@/components/Sections";
+import { CelebrationGrid, WhyUs, OurShowroom } from "@/components/Sections";
 
 import HeroVideo from "@/components/HeroVideo";
-import HomeProducts, { HomeProductsSkeleton } from "@/components/home/HomeProducts";
+import HomeProducts, {
+  HomeProductsSkeleton,
+} from "@/components/home/HomeProducts";
 import Catalogue from "@/components/home/Catalogue";
 import KindWords from "@/components/KindWords";
 import HomeTextAnimation from "@/components/HomeTextAnimation";
@@ -104,22 +103,9 @@ export default async function HomePage() {
 
   const localBusinessJsonLd = {
     "@context": "https://schema.org",
-    "@type": "LocalBusiness",
-    "@id": `${siteUrl}/#localbusiness`,
-    name: siteName,
-    url: siteUrl,
-    image: `${siteUrl}/logo.png`,
+    ...getBusinessIdentity(),
     description,
     priceRange: "₹₹",
-    address: {
-      "@type": "PostalAddress",
-      streetAddress:
-        "Shop No. 8, Indra Kumar Karnani St, China Bazar, B.B.D. Bagh",
-      addressLocality: "Kolkata",
-      addressRegion: "West Bengal",
-      postalCode: "700001",
-      addressCountry: "IN",
-    },
     areaServed: [
       {
         "@type": "City",

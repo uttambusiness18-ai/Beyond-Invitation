@@ -144,7 +144,7 @@ function ProductRecommendation({
 }
 
 function VisitShopCard() {
-  const directions = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(CHATBOT_SHOWROOM.address)}`;
+  const directions = CHATBOT_SHOWROOM.googleMapsUrl;
   return (
     <section
       aria-label="Visit our showroom"

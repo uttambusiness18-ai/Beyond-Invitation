@@ -34,6 +34,15 @@ function trackingHarness(t, pathname = "/contact?email=private@example.test&gcli
     window: dom.window,
     consent: load("lib/cookie-consent.ts"),
     tracking: load("lib/google-tracking.ts"),
+    bootstrap: () => {
+      const tag = load("lib/google-tag.ts");
+      const script = dom.window.document.createElement("script");
+      script.id = tag.GOOGLE_TAG_BOOTSTRAP_ID;
+      script.textContent = tag.GOOGLE_TAG_BOOTSTRAP;
+      dom.window.document.head.prepend(script);
+      new Function("window", "document", tag.GOOGLE_TAG_BOOTSTRAP)(dom.window, dom.window.document);
+      return script;
+    },
     conversions: () => (dom.window.dataLayer || []).map(args => Array.from(args))
       .filter(args => args[0] === "event" && args[1] === "conversion"),
   };
@@ -42,6 +51,66 @@ function trackingHarness(t, pathname = "/contact?email=private@example.test&gcli
 const commands = window => (window.dataLayer || []).map(args => Array.from(args));
 const denied = { ad_storage: "denied", analytics_storage: "denied", ad_user_data: "denied", ad_personalization: "denied" };
 const purchase = { id: "11111111-2222-4333-8444-555555555555", paymentStatus: "paid", testMode: false, amountPaise: 125050, currency: "INR" };
+
+test("head bootstrap sets denied consent and clean URLs before the Google loader is inserted", t => {
+  const { window, tracking, bootstrap } = trackingHarness(t);
+  const head = window.document.head;
+  const insertBefore = head.insertBefore.bind(head);
+  let commandsAtLoad;
+  head.insertBefore = (node, reference) => {
+    if (node.id === tracking.GOOGLE_TAG_SCRIPT_ID) commandsAtLoad = commands(window);
+    return insertBefore(node, reference);
+  };
+  const inline = bootstrap();
+  assert.deepEqual(commandsAtLoad[0], ["consent", "default", denied]);
+  assert.equal(commandsAtLoad[1][1].page_location, "https://www.beyondinvitation.co.in/contact");
+  assert.equal(commandsAtLoad[1][1].page_referrer, "https://www.beyondinvitation.co.in/catalog");
+  assert.equal(commandsAtLoad[1][1].ads_data_redaction, true);
+  assert.equal(commandsAtLoad[1][1].url_passthrough, false);
+  assert.equal(commandsAtLoad.some(args => args[0] === "config" || args[0] === "event"), false);
+  assert.equal(inline.nextElementSibling.id, tracking.GOOGLE_TAG_SCRIPT_ID);
+  assert.equal(inline.nextElementSibling.async, true);
+});
+
+test("hydration reuses the head bootstrap without resetting consent or duplicating initialization", t => {
+  const { window, consent, tracking, bootstrap } = trackingHarness(t);
+  bootstrap();
+  consent.saveCookieConsent("accepted");
+  tracking.syncGoogleTracking();
+  tracking.syncGoogleTracking();
+  const queue = commands(window);
+  assert.equal(queue.filter(args => args[0] === "consent" && args[1] === "default").length, 1);
+  assert.equal(queue.filter(args => args[0] === "js").length, 1);
+  assert.equal(queue.filter(args => args[0] === "config" && args[1] === tracking.GOOGLE_ADS_ID).length, 1);
+  assert.equal(queue.filter(args => args[0] === "event" && args[1] === "page_view").length, 1);
+  assert.equal(window.document.querySelectorAll(`script#${tracking.GOOGLE_TAG_SCRIPT_ID}`).length, 1);
+  assert.equal(queue.find(args => args[0] === "event" && args[1] === "page_view")[2].page_location,
+    "https://www.beyondinvitation.co.in/contact?gclid=click-id");
+});
+
+test("a failed head loader is retried once without reinitializing Google", t => {
+  const { window, tracking, bootstrap } = trackingHarness(t);
+  bootstrap();
+  const failed = window.document.getElementById(tracking.GOOGLE_TAG_SCRIPT_ID);
+  failed.dispatchEvent(new window.Event("error"));
+  assert.equal(window.document.getElementById(tracking.GOOGLE_TAG_SCRIPT_ID), null);
+  tracking.syncGoogleTracking();
+  tracking.syncGoogleTracking();
+  assert.notEqual(window.document.getElementById(tracking.GOOGLE_TAG_SCRIPT_ID), failed);
+  assert.equal(window.document.querySelectorAll(`script#${tracking.GOOGLE_TAG_SCRIPT_ID}`).length, 1);
+  assert.equal(commands(window).filter(args => args[0] === "js").length, 1);
+});
+
+test("shared head bootstrap remains inactive on admin routes and initializes on storefront navigation", t => {
+  const { window, tracking, bootstrap } = trackingHarness(t, "/admin/orders");
+  bootstrap();
+  assert.equal(window.gtag, undefined);
+  assert.equal(window.document.getElementById(tracking.GOOGLE_TAG_SCRIPT_ID), null);
+  assert.equal(tracking.syncGoogleTracking(), false);
+  window.history.pushState({}, "", "/contact");
+  assert.equal(tracking.syncGoogleTracking(), true);
+  assert.ok(window.document.getElementById(tracking.GOOGLE_TAG_SCRIPT_ID));
+});
 
 test("confirmed leads can send cookieless signals before a choice and after Essential only", async t => {
   for (const choice of [null, "declined"]) await t.test(String(choice), child => {

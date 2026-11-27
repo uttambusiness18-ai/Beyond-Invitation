@@ -10,7 +10,9 @@ function normalizeUrl(value?: string | null) {
 
   if (!clean) return "";
 
-  if (clean.startsWith("http://") || clean.startsWith("https://")) {
+  if (/^[a-z][a-z\d+.-]*:/i.test(clean) && !/^https?:\/\//i.test(clean)) return "";
+
+  if (/^https?:\/\//i.test(clean)) {
     return clean;
   }
 
@@ -18,6 +20,7 @@ function normalizeUrl(value?: string | null) {
 }
 
 export const SITE_NAME = "Beyond Invitation";
+export const BUSINESS_NAME = "Beyond Invitation (Bharat Agency)";
 export const BRAND_NAME = "Bharat Agency Wedding Cards Pvt. Ltd.";
 export const DEFAULT_OG_IMAGE = "/logo.png";
 
@@ -28,6 +31,8 @@ export const CONTACT = {
   email: "contact@khushionline.net",
   instagram: "https://www.instagram.com/beyond_invitationofficial/",
   instagramHandle: "@beyond_invitationofficial",
+  youtube: "https://www.youtube.com/@BeyondInvitation",
+  googleMaps: "https://share.google/OGSfid2VgyLRllfAo",
 } as const;
 
 export const SITE_DESCRIPTION = SHAGUN_ENVELOPES_ENABLED
@@ -53,23 +58,28 @@ export const PRIMARY_KEYWORDS = [
 ];
 
 export const BUSINESS_ADDRESS = {
-  streetAddress: "Shop No. 8, Indra Kumar Karnani St, China Bazar, B.B.D. Bagh",
+  streetAddress: "8, Jackson Lane, Canning Street",
   addressLocality: "Kolkata",
   addressRegion: "West Bengal",
   postalCode: "700001",
   addressCountry: "IN",
 };
 
-export function getSiteUrl(): string {
-  const fromEnv =
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    process.env.NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL ||
-    process.env.VERCEL_PROJECT_PRODUCTION_URL ||
-    process.env.NEXT_PUBLIC_VERCEL_URL ||
-    process.env.VERCEL_URL ||
-    DEFAULT_SITE_URL;
+export const BUSINESS_ADDRESS_TEXT = `${BUSINESS_ADDRESS.streetAddress}, ${BUSINESS_ADDRESS.addressLocality} - ${BUSINESS_ADDRESS.postalCode}`;
 
-  return normalizeUrl(fromEnv) || DEFAULT_SITE_URL;
+export function getSiteUrl(): string {
+  // Deployment/preview hostnames must never become the canonical storefront.
+  // Only an explicit public site setting can override the business domain.
+  const configured = normalizeUrl(process.env.NEXT_PUBLIC_SITE_URL);
+  if (!configured) return DEFAULT_SITE_URL;
+  try {
+    const url = new URL(configured);
+    return ["http:", "https:"].includes(url.protocol) && !url.username && !url.password
+      ? url.origin
+      : DEFAULT_SITE_URL;
+  } catch {
+    return DEFAULT_SITE_URL;
+  }
 }
 
 export function siteUrl(path = "/") {

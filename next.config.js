@@ -2,6 +2,18 @@ const { PHASE_DEVELOPMENT_SERVER } = require("next/constants");
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Deliver complete head metadata even to unknown crawlers that cannot run JS.
+  // Apply the same rendering behavior to people and bots.
+  htmlLimitedBots: /.*/,
+  async redirects() {
+    return [
+      {
+        source: "/products/g222-01",
+        destination: "/products/g22201",
+        permanent: true,
+      },
+    ];
+  },
   eslint: {
     ignoreDuringBuilds: true,
   },

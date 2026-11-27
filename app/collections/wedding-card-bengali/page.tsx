@@ -11,9 +11,7 @@ import {
 import { BENGALI_FAQS, BENGALI_INTRO } from "@/lib/bengali-wedding-content";
 import { parsePageNumber } from "@/lib/pagination";
 import {
-  facetCounts,
   weddingFiltersFromSearchParams,
-  type WeddingProductPage,
   type WeddingSearchParams,
   type WeddingFilters,
 } from "@/lib/wedding-cards";
@@ -31,26 +29,11 @@ const readPage = cache(
     price: WeddingFilters["price"],
     sort: WeddingFilters["sort"],
   ) => {
-    let initialPage: WeddingProductPage = {
-      pageNumber,
-      products: [],
-      nextOffset: null,
-      total: 0,
-      facets: facetCounts([]),
-    };
-    let errorMessage = "";
-
-    try {
-      initialPage = await fetchWeddingProductPage({
-        collectionType: "bengali",
-        filters: { type: "all", price, sort },
-        offset: (pageNumber - 1) * COLLECTION_PAGE_SIZE,
-      });
-    } catch (error) {
-      console.error("Bengali wedding cards page fetch failed:", error);
-      errorMessage = "Unable to load wedding cards.";
-    }
-    return { initialPage, errorMessage };
+    return fetchWeddingProductPage({
+      collectionType: "bengali",
+      filters: { type: "all", price, sort },
+      offset: (pageNumber - 1) * COLLECTION_PAGE_SIZE,
+    });
   },
 );
 
@@ -69,7 +52,7 @@ export async function generateMetadata({
   searchParams,
 }: PageProps): Promise<Metadata> {
   const params = await searchParams;
-  const { initialPage } = await loadPage(params);
+  const initialPage = await loadPage(params);
   return getBengaliMetadata(params, initialPage.pageNumber);
 }
 
@@ -78,7 +61,7 @@ export default async function BengaliWeddingCardPage({
 }: PageProps) {
   const params = await searchParams;
   const initialFilters = weddingFiltersFromSearchParams(params, "bengali");
-  const { initialPage, errorMessage } = await loadPage(params);
+  const initialPage = await loadPage(params);
 
   return (
     <>
@@ -88,7 +71,6 @@ export default async function BengaliWeddingCardPage({
         collectionType="bengali"
         initialPage={initialPage}
         initialFilters={initialFilters}
-        errorMessage={errorMessage}
         emptyTitle="No Bengali wedding cards just yet"
         intro={BENGALI_INTRO}
         headerContent={

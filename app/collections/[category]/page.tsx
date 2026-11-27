@@ -4,8 +4,8 @@ import { notFound } from "next/navigation";
 import CategoryCollectionPageClient from "@/components/CategoryCollectionPage";
 import JsonLd from "@/components/seo/JsonLd";
 import type { ErpProduct } from "@/lib/catalog";
-import { fetchCatalogProductPage } from "@/lib/catalog-browse";
-import { emptyCatalogPage } from "@/lib/catalog-browse-options";
+import { loadCatalogPage, catalogPagePath, type CatalogSearchParams } from "@/lib/catalog-page";
+import { COLLECTION_PAGE_SIZE } from "@/lib/catalog-browse-options";
 import { getAllCategories, getCategoryBySlug } from "@/lib/products";
 import {
   DEFAULT_OG_IMAGE,
@@ -17,8 +17,11 @@ import {
 
 interface PageProps {
   params: Promise<{ category: string }>;
+  searchParams: Promise<CatalogSearchParams>;
 }
 
+// No ancestor loading.tsx: resolve the category and required catalogue read
+// before streaming so missing categories and outages retain HTTP 404/500.
 export const dynamic = "force-dynamic";
 export const revalidate = 60;
 
@@ -93,18 +96,13 @@ function getProductImage(product: ErpProduct) {
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: PageProps): Promise<Metadata> {
   const { category: categorySlug } = await params;
   const category = await getCategoryBySlug(categorySlug);
 
   if (!category) {
-    return {
-      title: "Collection Not Found | Beyond Invitation",
-      robots: {
-        index: false,
-        follow: true,
-      },
-    };
+    notFound();
   }
 
   const seo = getCategorySeo(
@@ -113,18 +111,20 @@ export async function generateMetadata({
     category.description,
   );
 
-  const canonicalPath = `/collections/${category.slug}`;
+  const { pageNumber } = await loadCatalogPage(await searchParams ?? {}, { category: category.slug });
+  const canonicalPath = catalogPagePath(`/collections/${category.slug}`, pageNumber);
+  const title = `${seo.title}${pageNumber > 1 ? ` – Page ${pageNumber}` : ""}`;
 
   return {
     metadataBase: new URL(getSiteUrl()),
-    title: seo.title,
+    title,
     description: seo.description,
     keywords: seo.keywords,
     alternates: {
       canonical: canonicalPath,
     },
     openGraph: {
-      title: seo.title,
+      title,
       description: seo.description,
       url: siteUrl(canonicalPath),
       siteName: SITE_NAME,
@@ -141,7 +141,7 @@ export async function generateMetadata({
     },
     twitter: {
       card: "summary_large_image",
-      title: seo.title,
+      title,
       description: seo.description,
       images: [DEFAULT_OG_IMAGE],
     },
@@ -159,7 +159,7 @@ export async function generateMetadata({
   };
 }
 
-export default async function CollectionPage({ params }: PageProps) {
+export default async function CollectionPage({ params, searchParams }: PageProps) {
   const { category: categorySlug } = await params;
   const category = await getCategoryBySlug(categorySlug);
 
@@ -167,18 +167,10 @@ export default async function CollectionPage({ params }: PageProps) {
     notFound();
   }
 
-  let page = emptyCatalogPage();
-  let errorMessage = "";
-
-  try {
-    page = await fetchCatalogProductPage({ category: category.slug });
-  } catch (error) {
-    console.error(`${category.name} collection fetch failed:`, error);
-    errorMessage = "Unable to load this collection.";
-  }
+  const { page, pageNumber } = await loadCatalogPage(await searchParams ?? {}, { category: category.slug });
 
   const products = page.products;
-  const collectionUrl = siteUrl(`/collections/${category.slug}`);
+  const collectionUrl = siteUrl(catalogPagePath(`/collections/${category.slug}`, pageNumber));
 
   const seo = getCategorySeo(
     category.slug,
@@ -222,7 +214,7 @@ export default async function CollectionPage({ params }: PageProps) {
       name: `${category.name} products`,
       itemListElement: products.slice(0, 24).map((product, index) => ({
         "@type": "ListItem",
-        position: index + 1,
+        position: (pageNumber - 1) * COLLECTION_PAGE_SIZE + index + 1,
         url: siteUrl(`/products/${product.slug}`),
         item: {
           "@type": "Product",
@@ -235,7 +227,6 @@ export default async function CollectionPage({ params }: PageProps) {
             "@type": "Offer",
             priceCurrency: "INR",
             price: product.price,
-            availability: "https://schema.org/InStock",
           } : undefined,
         },
       })),
@@ -251,8 +242,8 @@ export default async function CollectionPage({ params }: PageProps) {
         categoryName={category.name}
         categoryDescription={category.description}
         initialPage={page}
+        initialPageNumber={pageNumber}
         category={category.slug}
-        errorMessage={errorMessage}
       />
     </>
   );

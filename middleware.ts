@@ -12,7 +12,7 @@ const CODE_PATTERN = /^[A-Za-z0-9]{4,16}$/;
 // Keep this an explicit allowlist so new routes retain session refresh by default.
 const PUBLIC_DOCUMENT_PATHS = new Set([
   "/", "/catalog", "/wedding-cards", "/wedding-boxes", "/search",
-  "/about", "/contact", "/visit-us", "/blog", "/blogs",
+  "/about", "/contact", "/visit-us", "/faq", "/blog", "/blogs",
   "/wedding-card-hindu", "/wedding-card-muslim", "/wedding-card-christian",
   "/privacy-policy", "/refund-policy", "/shipping-policy", "/terms-and-conditions",
 ]);

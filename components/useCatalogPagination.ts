@@ -17,21 +17,23 @@ const DEFAULT_FILTERS = { price: "all", sort: "featured" } as const;
 type Filters = { price: CatalogPrice; sort: CatalogSort };
 type PageRequest = { query: string; offset: number; pageNumber: number; clear: boolean; scroll: boolean };
 
-export function useCatalogPagination(initialPage: CatalogBrowsePage, scope: CatalogScope = {}) {
+export type CatalogNavigation = { paginationPath?: string; initialPageNumber?: number };
+
+export function useCatalogPagination(initialPage: CatalogBrowsePage, scope: CatalogScope = {}, { paginationPath, initialPageNumber = 1 }: CatalogNavigation = {}) {
   const scopeQuery = catalogBrowseQuery(scope);
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [page, setPage] = useState(initialPage);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(initialPageNumber);
   const [loading, setLoading] = useState<"replace" | null>(null);
   const [error, setError] = useState("");
   const pageRef = useRef(initialPage);
-  const currentPageRef = useRef(1);
+  const currentPageRef = useRef(initialPageNumber);
   const shouldScrollRef = useRef(false);
   const filtersRef = useRef<Filters>(DEFAULT_FILTERS);
   const queryRef = useRef(scopeQuery);
   const controllerRef = useRef<AbortController | null>(null);
   const failedRequestRef = useRef<PageRequest | null>(null);
-  const { listRef, restoreSnapshot } = useProductListHistory(`catalog-pages:${scopeQuery}`, { page, filters, currentPage });
+  const { listRef, restoreSnapshot } = useProductListHistory(`catalog-pages:${scopeQuery}:${paginationPath ?? ""}:${initialPageNumber}`, { page, filters, currentPage });
 
   useLayoutEffect(() => {
     controllerRef.current?.abort();
@@ -40,7 +42,7 @@ export function useCatalogPagination(initialPage: CatalogBrowsePage, scope: Cata
     const restored = restoreSnapshot();
     const nextPage = restored?.page ?? initialPage;
     const nextFilters = restored?.filters ?? DEFAULT_FILTERS;
-    const nextPageNumber = restored?.currentPage ?? 1;
+    const nextPageNumber = restored?.currentPage ?? initialPageNumber;
     const query = new URLSearchParams(scopeQuery);
     query.set("price", nextFilters.price);
     query.set("sort", nextFilters.sort);
@@ -58,7 +60,7 @@ export function useCatalogPagination(initialPage: CatalogBrowsePage, scope: Cata
       controllerRef.current?.abort();
       controllerRef.current = null;
     };
-  }, [initialPage, scopeQuery, restoreSnapshot]);
+  }, [initialPage, initialPageNumber, scopeQuery, restoreSnapshot]);
 
   useLayoutEffect(() => {
     if (!shouldScrollRef.current) return;
@@ -119,6 +121,11 @@ export function useCatalogPagination(initialPage: CatalogBrowsePage, scope: Cata
   function changeFilters(next: Filters) {
     const query = catalogBrowseQuery(scope, next.price, next.sort);
     if (query === queryRef.current) return;
+    if (paginationPath && next.price === "all" && next.sort === "featured") {
+      // Restore page one's URL and server metadata along with its products.
+      window.location.assign(paginationPath);
+      return;
+    }
     queryRef.current = query;
     filtersRef.current = next;
     currentPageRef.current = 1;
@@ -133,6 +140,11 @@ export function useCatalogPagination(initialPage: CatalogBrowsePage, scope: Cata
 
   return {
     page, loading, error, listRef, currentPage, totalPages, rangeStart, rangeEnd, ...filters,
+    // Unfiltered pages are server-addressable; transient client filters keep
+    // their existing API pagination instead of linking to a different result.
+    getPageHref: paginationPath && filters.price === "all" && filters.sort === "featured"
+      ? (pageNumber: number) => pageNumber > 1 ? `${paginationPath}?page=${pageNumber}` : paginationPath
+      : undefined,
     setPrice: (price: CatalogPrice) => changeFilters({ ...filtersRef.current, price }),
     setSort: (sort: CatalogSort) => changeFilters({ ...filtersRef.current, sort }),
     clearFilters: () => changeFilters(DEFAULT_FILTERS),

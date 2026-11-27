@@ -2,12 +2,12 @@
 
 import ProductCard from "@/components/ProductCard";
 import ProductPagination from "@/components/ProductPagination";
-import { useCatalogPagination } from "@/components/useCatalogPagination";
+import { useCatalogPagination, type CatalogNavigation } from "@/components/useCatalogPagination";
 import type { CatalogBrowsePage, CatalogScope } from "@/lib/catalog-browse-options";
 
 type Pagination = ReturnType<typeof useCatalogPagination>;
 
-export function CatalogPaginationControls({ currentPage, totalPages, loading, error, goToPage, retry }: Pick<Pagination, "currentPage" | "totalPages" | "loading" | "error" | "goToPage" | "retry">) {
+export function CatalogPaginationControls({ currentPage, totalPages, loading, error, goToPage, retry, getPageHref }: Pick<Pagination, "currentPage" | "totalPages" | "loading" | "error" | "goToPage" | "retry" | "getPageHref">) {
   return (
     <div className="space-y-3 pt-4 text-center">
       {error && (
@@ -18,18 +18,18 @@ export function CatalogPaginationControls({ currentPage, totalPages, loading, er
           </button>
         </div>
       )}
-      <ProductPagination currentPage={currentPage} totalPages={totalPages} onPageChange={goToPage} disabled={Boolean(loading)} />
+      <ProductPagination currentPage={currentPage} totalPages={totalPages} onPageChange={goToPage} getPageHref={getPageHref} disabled={Boolean(loading)} />
     </div>
   );
 }
 
-export default function PaginatedProductGrid({ initialPage, scope = {}, categoryLabel, gridClassName = "grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-5 md:grid-cols-3 lg:grid-cols-4" }: {
+export default function PaginatedProductGrid({ initialPage, scope = {}, categoryLabel, paginationPath, initialPageNumber, gridClassName = "grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-5 md:grid-cols-3 lg:grid-cols-4" }: {
   initialPage: CatalogBrowsePage;
   scope?: CatalogScope;
   categoryLabel?: string;
   gridClassName?: string;
-}) {
-  const pagination = useCatalogPagination(initialPage, scope);
+} & CatalogNavigation) {
+  const pagination = useCatalogPagination(initialPage, scope, { paginationPath, initialPageNumber });
   return (
     <div ref={pagination.listRef} tabIndex={-1} className="scroll-mt-28 outline-none" aria-busy={Boolean(pagination.loading)}>
       <p className="mb-5 text-base text-ink-mid" aria-live="polite">

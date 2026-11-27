@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 
 import FilterableProductGrid from "@/components/FilterableProductGrid";
-import { fetchCatalogProductPage } from "@/lib/catalog-browse";
-import { emptyCatalogPage } from "@/lib/catalog-browse-options";
+import { loadCatalogPage, catalogPagePath, type CatalogSearchParams } from "@/lib/catalog-page";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -14,26 +13,25 @@ const SUBJECTS = [
   "Christian Wedding Card",
 ];
 
-export const metadata: Metadata = {
+const baseMetadata: Metadata = {
   title: "Wedding Cards – Beyond Invitation",
   description:
     "Browse all wedding card designs available at Beyond Invitation, including Hindu, Muslim, Christian and general wedding invitation cards.",
 };
 
-export default async function WeddingCardPage() {
-  let page = emptyCatalogPage();
-  let errorMessage = "";
+type PageProps = { searchParams: Promise<CatalogSearchParams> };
 
-  try {
-    page = await fetchCatalogProductPage({ subjects: SUBJECTS });
-  } catch (error) {
-    console.error("Catalogue Wedding Card fetch failed:", error);
+export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
+  const { pageNumber } = await loadCatalogPage(await searchParams ?? {}, { subjects: SUBJECTS });
+  return {
+    ...baseMetadata,
+    title: `Wedding Cards${pageNumber > 1 ? ` – Page ${pageNumber}` : ""}`,
+    alternates: { canonical: catalogPagePath("/collections/wedding-card", pageNumber) },
+  };
+}
 
-    errorMessage =
-      error instanceof Error
-        ? error.message
-        : "Unable to fetch products from Catalogue.";
-  }
+export default async function WeddingCardPage({ searchParams }: PageProps) {
+  const { page, pageNumber } = await loadCatalogPage(await searchParams ?? {}, { subjects: SUBJECTS });
 
   return (
     <main className="bg-white">
@@ -55,32 +53,16 @@ export default async function WeddingCardPage() {
               </p>
             </div>
 
-            {!errorMessage && (
-              <p className="text-base font-semibold text-carbon">
-                {page.total}{" "}
-                {page.total === 1 ? "Product" : "Products"}
-              </p>
-            )}
+            <p className="text-base font-semibold text-carbon">
+              {page.total}{" "}
+              {page.total === 1 ? "Product" : "Products"}
+            </p>
           </div>
         </div>
       </section>
 
       <section className="mx-auto max-w-[1800px] px-4 py-7 sm:px-6 lg:px-8">
-        {errorMessage ? (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-6">
-            <p className="text-sm font-semibold uppercase tracking-[0.1em] text-red-700">
-              Catalogue Error
-            </p>
-
-            <h2 className="mt-2 font-serif text-2xl font-semibold text-red-900">
-              Products could not be loaded
-            </h2>
-
-            <p className="mt-3 text-base leading-6 text-red-700">
-              Please try again shortly.
-            </p>
-          </div>
-        ) : page.products.length === 0 ? (
+        {page.products.length === 0 ? (
           <div className="rounded-2xl border border-gold/20 bg-paper p-8 text-center">
             <h2 className="font-serif text-2xl font-semibold text-maroon">
               No wedding cards found
@@ -91,7 +73,7 @@ export default async function WeddingCardPage() {
             </p>
           </div>
         ) : (
-          <FilterableProductGrid initialPage={page} scope={{ subjects: SUBJECTS }} />
+          <FilterableProductGrid initialPage={page} initialPageNumber={pageNumber} paginationPath="/collections/wedding-card" scope={{ subjects: SUBJECTS }} />
         )}
       </section>
     </main>

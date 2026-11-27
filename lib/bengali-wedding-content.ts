@@ -35,7 +35,7 @@ export const BENGALI_INTRO =
 export const BENGALI_FAQS = [
   {
     question: "Where can I buy Bengali wedding cards online or in Kolkata?",
-    answer: `Browse the Bengali collection online and open a design to see its details and ordering options. You can also compare samples at the Beyond Invitation showroom at ${CHATBOT_SHOWROOM.address} Contact the team before ordering if you need printing, personalisation or a quotation.`,
+    answer: `Browse the Bengali collection online and open a design to see its details and ordering options. You can also compare samples at the Beyond Invitation showroom at ${CHATBOT_SHOWROOM.address}. Contact the team before ordering if you need printing, personalisation or a quotation.`,
   },
   {
     question: "Can I personalise my Biyer Card with Bengali wording?",

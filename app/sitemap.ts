@@ -3,6 +3,8 @@ import { getAllCategories } from "@/lib/products";
 import { fetchErpProductsBase } from "@/lib/catalog";
 import { getSiteUrl } from "@/lib/site-config";
 import { getPublishedBlogs } from "@/lib/blog-server";
+import { SHAGUN_ENVELOPES_ENABLED } from "@/lib/storefront-availability";
+import { getProductCardImages } from "@/lib/product-card-media";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 60;
@@ -17,9 +19,37 @@ function uniqueByUrl(items: MetadataRoute.Sitemap) {
   });
 }
 
+function knownModifiedDate(value?: string | null): Date | undefined {
+  if (!value) return undefined;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : date;
+}
+
+function productImageUrls(images: string[], siteUrl: string): string[] {
+  const crawlableImages = images.filter((image) =>
+    !/^[a-z][a-z\d+.-]*:/i.test(image.trim()) || /^https?:\/\//i.test(image.trim()),
+  );
+  const urls = getProductCardImages(crawlableImages).flatMap((image) => {
+    try {
+      // Bare filenames use the same /products/ location as the storefront.
+      const url = new URL(image.trim(), `${siteUrl}/products/`);
+      return url.protocol === "https:" || url.protocol === "http:"
+        // Next 15's sitemap serializer inserts image URLs verbatim into XML.
+        // Escape query separators so signed/transformed image URLs stay valid.
+        ? [url.href.replace(/&/g, "&amp;")]
+        : [];
+    } catch {
+      return [];
+    }
+  });
+  return [...new Set(urls)].slice(0, 1000);
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const siteUrl = getSiteUrl();
-  const now = new Date();
+
+  // Only publish lastmod when the content source supplies a real edit time.
+  // Generating a sitemap does not mean every page changed.
 
   const staticRoutes: MetadataRoute.Sitemap = [
     {
@@ -29,19 +59,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
     {
       url: `${siteUrl}/catalog`,
-      lastModified: now,
       changeFrequency: "daily",
       priority: 0.9,
     },
     {
       url: `${siteUrl}`,
-      lastModified: now,
       changeFrequency: "daily",
       priority: 1,
     },
     {
       url: `${siteUrl}/wedding-cards`,
-      lastModified: now,
       changeFrequency: "daily",
       priority: 0.98,
     },
@@ -51,20 +78,42 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.9,
     },
     {
+      url: `${siteUrl}/collections/wedding-card`,
+      changeFrequency: "weekly",
+      priority: 0.9,
+    },
+    {
+      url: `${siteUrl}/collections/wedding-card-hindu`,
+      changeFrequency: "weekly",
+      priority: 0.9,
+    },
+    {
+      url: `${siteUrl}/collections/wedding-card-muslim`,
+      changeFrequency: "weekly",
+      priority: 0.9,
+    },
+    {
+      url: `${siteUrl}/collections/wedding-card-christian`,
+      changeFrequency: "weekly",
+      priority: 0.9,
+    },
+    {
+      url: `${siteUrl}/wedding-boxes`,
+      changeFrequency: "weekly",
+      priority: 0.9,
+    },
+    {
       url: `${siteUrl}/about`,
-      lastModified: now,
       changeFrequency: "monthly",
       priority: 0.55,
     },
     {
       url: `${siteUrl}/contact`,
-      lastModified: now,
       changeFrequency: "monthly",
       priority: 0.55,
     },
     {
       url: `${siteUrl}/visit-us`,
-      lastModified: now,
       changeFrequency: "monthly",
       priority: 0.55,
     },
@@ -75,35 +124,38 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
     {
       url: `${siteUrl}/shipping-policy`,
-      lastModified: now,
       changeFrequency: "yearly",
       priority: 0.25,
     },
     {
       url: `${siteUrl}/refund-policy`,
-      lastModified: now,
       changeFrequency: "yearly",
       priority: 0.25,
     },
     {
       url: `${siteUrl}/privacy-policy`,
-      lastModified: now,
       changeFrequency: "yearly",
       priority: 0.2,
     },
     {
       url: `${siteUrl}/terms-and-conditions`,
-      lastModified: now,
       changeFrequency: "yearly",
       priority: 0.2,
     },
   ];
 
+  if (SHAGUN_ENVELOPES_ENABLED) {
+    staticRoutes.push({
+      url: `${siteUrl}/collections/shagun-envelopes`,
+      changeFrequency: "weekly",
+      priority: 0.72,
+    });
+  }
+
   const categories = await getAllCategories();
 
   const categoryRoutes: MetadataRoute.Sitemap = categories.map((category) => ({
     url: `${siteUrl}/collections/${category.slug}`,
-    lastModified: now,
     changeFrequency: "weekly",
     priority: category.slug.includes("wedding") ? 0.9 : 0.72,
   }));
@@ -113,7 +165,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const productRoutes: MetadataRoute.Sitemap = products
     .filter((product) => Boolean(product.slug))
     .map((product): MetadataRoute.Sitemap[number] => {
-      const lastModified = product.updatedAt || now;
+      const images = productImageUrls(product.images ?? [], siteUrl);
 
       const text = [
         product.name,
@@ -133,8 +185,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         text.includes("invitation");
 
       return {
-        url: `${siteUrl}/products/${product.slug}`,
-        lastModified: new Date(lastModified),
+        url: `${siteUrl}/products/${encodeURIComponent(product.slug)}`,
+        lastModified: knownModifiedDate(product.updatedAt),
+        ...(images.length ? { images } : {}),
         changeFrequency: "weekly",
         priority: isWeddingProduct ? 0.92 : 0.82,
       };
@@ -143,8 +196,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const blogRoutes: MetadataRoute.Sitemap = (
     await getPublishedBlogs().catch(() => [])
   ).map((post) => ({
-    url: `${siteUrl}/blog/${post.slug}`,
-    lastModified: new Date(post.updated_at),
+    url: `${siteUrl}/blog/${encodeURIComponent(post.slug)}`,
+    lastModified: knownModifiedDate(post.updated_at),
     changeFrequency: "monthly",
     priority: 0.65,
   }));

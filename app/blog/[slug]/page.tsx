@@ -6,6 +6,7 @@ import { ChevronRight, Clock3 } from "lucide-react";
 import { getPublishedBlog, getPublishedBlogs } from "@/lib/blog-server";
 import { blogDate } from "@/lib/blog";
 import { getSiteUrl } from "@/lib/site-config";
+import { getBusinessIdentity } from "@/lib/business-schema";
 import { absoluteUrl } from "@/lib/seo";
 import JsonLd from "@/components/seo/JsonLd";
 import BlogMarkdown from "@/components/blog/BlogMarkdown";
@@ -80,11 +81,7 @@ export default async function ArticlePage({ params }: Props) {
               post.author === "Beyond Invitation" ? "Organization" : "Person",
             name: post.author,
           },
-          publisher: {
-            "@type": "Organization",
-            name: "Beyond Invitation",
-            logo: { "@type": "ImageObject", url: `${getSiteUrl()}/logo.png` },
-          },
+          publisher: getBusinessIdentity(),
           mainEntityOfPage: `${getSiteUrl()}/blog/${post.slug}`,
         }}
       />

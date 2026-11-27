@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { SHAGUN_ENVELOPES_ENABLED } from "@/lib/storefront-availability";
 
 import { fetchCatalogProductPage } from "@/lib/catalog-browse";
-import { emptyCatalogPage } from "@/lib/catalog-browse-options";
 import CollectionPageShell from "@/components/CollectionPageShell";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +11,7 @@ export const revalidate = 0;
 const SUBJECT = "Shagun Envelopes";
 
 export const metadata: Metadata = SHAGUN_ENVELOPES_ENABLED ? {
+  alternates: { canonical: "/collections/shagun-envelopes" },
   title: "Shagun Envelopes – Beyond Invitation",
   description:
     "Explore premium Shagun Envelopes from Beyond Invitation.",
@@ -20,19 +20,7 @@ export const metadata: Metadata = SHAGUN_ENVELOPES_ENABLED ? {
 export default async function ShagunEnvelopesPage() {
   if (!SHAGUN_ENVELOPES_ENABLED) notFound();
 
-  let page = emptyCatalogPage();
-  let errorMessage = "";
-
-  try {
-    page = await fetchCatalogProductPage({ subjects: [SUBJECT] });
-  } catch (error) {
-    console.error("Catalogue Shagun Envelopes fetch failed:", error);
-
-    errorMessage =
-      error instanceof Error
-        ? error.message
-        : "Unable to fetch Shagun Envelopes from Catalogue.";
-  }
+  const page = await fetchCatalogProductPage({ subjects: [SUBJECT] });
 
   return (
     <CollectionPageShell
@@ -41,7 +29,6 @@ export default async function ShagunEnvelopesPage() {
       description="Premium envelopes for weddings, gifting, festive celebrations and special occasions."
       initialPage={page}
       scope={{ subjects: [SUBJECT] }}
-      errorMessage={errorMessage}
       emptyTitle="No Shagun Envelopes found"
       emptyDescription="This collection is being updated. Please check back soon or contact us for help finding your invitation."
       accentIcon="✉"

@@ -4,9 +4,9 @@ import WeddingCardsCollection from "@/components/wedding-cards/WeddingCardsColle
 import { fetchWeddingProductPage } from "@/lib/catalog-browse";
 import { COLLECTION_PAGE_SIZE } from "@/lib/catalog-browse-options";
 import { parsePageNumber } from "@/lib/pagination";
+import { getBusinessIdentity } from "@/lib/business-schema";
 import { facetCounts, weddingFiltersFromSearchParams, WEDDING_FAQS, type WeddingProductPage, type WeddingSearchParams } from "@/lib/wedding-cards";
 import {
-  BUSINESS_ADDRESS,
   DEFAULT_OG_IMAGE,
   PRIMARY_KEYWORDS,
   SITE_DESCRIPTION,
@@ -78,14 +78,9 @@ export default async function WeddingCardsPage({ searchParams }: { searchParams:
   }
   const localBusinessJsonLd = {
     "@context": "https://schema.org",
-    "@type": "LocalBusiness",
-    "@id": `${getSiteUrl()}/#localbusiness`,
-    name: SITE_NAME,
-    url: getSiteUrl(),
-    image: siteUrl(DEFAULT_OG_IMAGE),
+    ...getBusinessIdentity(),
     description: SITE_DESCRIPTION,
     priceRange: "₹₹",
-    address: { "@type": "PostalAddress", ...BUSINESS_ADDRESS },
     areaServed: [
       { "@type": "City", name: "Kolkata" },
       { "@type": "State", name: "West Bengal" },

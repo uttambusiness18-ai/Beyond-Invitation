@@ -3,7 +3,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BRAND, TAGLINE } from "@/components/siteConfig";
-import { siteUrl } from "@/lib/site-config";
+import { BUSINESS_ADDRESS_TEXT, siteUrl } from "@/lib/site-config";
 import { SHAGUN_ENVELOPES_ENABLED } from "@/lib/storefront-availability";
 
 export const metadata: Metadata = {
@@ -321,7 +321,7 @@ export default function AboutPage() {
                     Location
                   </p>
                   <p className="mt-3 break-words leading-7 text-ink-mid [overflow-wrap:anywhere]">
-                    8, Jackson Lane, Canning Street, Kolkata - 700001
+                    {BUSINESS_ADDRESS_TEXT}
                   </p>
                 </div>
 

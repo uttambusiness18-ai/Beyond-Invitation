@@ -1,7 +1,7 @@
 "use client";
 
 import type { CatalogBrowsePage, CatalogPrice, CatalogScope, CatalogSort } from "@/lib/catalog-browse-options";
-import { useCatalogPagination } from "@/components/useCatalogPagination";
+import { useCatalogPagination, type CatalogNavigation } from "@/components/useCatalogPagination";
 import { CatalogPaginationControls } from "@/components/PaginatedProductGrid";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -36,7 +36,7 @@ const SORT_OPTIONS = [
   { key: "discount", label: "Biggest Discount" },
 ];
 
-interface FilterableProductGridProps {
+interface FilterableProductGridProps extends CatalogNavigation {
   initialPage: CatalogBrowsePage;
   scope?: CatalogScope;
 }
@@ -44,8 +44,10 @@ interface FilterableProductGridProps {
 export default function FilterableProductGrid({
   initialPage,
   scope = {},
+  paginationPath,
+  initialPageNumber,
 }: FilterableProductGridProps) {
-  const pagination = useCatalogPagination(initialPage, scope);
+  const pagination = useCatalogPagination(initialPage, scope, { paginationPath, initialPageNumber });
   const { page, price: priceKey, sort: sortKey, setPrice, setSort, clearFilters, loading, error } = pagination;
   const isFiltered = priceKey !== "all" || sortKey !== "featured";
 

@@ -2,6 +2,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BRAND } from "@/components/siteConfig";
+import { BUSINESS_ADDRESS_TEXT } from "@/lib/site-config";
 import { SHAGUN_ENVELOPES_ENABLED } from "@/lib/storefront-availability";
 
 export const metadata: Metadata = {
@@ -338,7 +339,7 @@ export default function TermsAndConditionsPage() {
                   <span className="font-semibold text-neutral-950">
                     Address:
                   </span>{" "}
-                  8, Jackson Lane, Canning Street, Kolkata - 700001
+                  {BUSINESS_ADDRESS_TEXT}
                 </p>
                 <p>
                   <span className="font-semibold text-neutral-950">
