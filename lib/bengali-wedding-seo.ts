@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { BENGALI_KEYWORDS } from "@/lib/bengali-wedding-content";
 import { COLLECTION_PAGE_SIZE } from "@/lib/catalog-browse-options";
 import { parsePageNumber } from "@/lib/pagination";
-import { SITE_NAME, getSiteUrl, siteUrl } from "@/lib/site-config";
+import { DEFAULT_OG_IMAGE, SITE_NAME, getSiteUrl, siteUrl } from "@/lib/site-config";
+import { getProductPreviewImages } from "@/lib/seo-images";
 import {
   DEFAULT_WEDDING_FILTERS,
   weddingFiltersFromSearchParams,
@@ -11,8 +12,6 @@ import {
 } from "@/lib/wedding-cards";
 
 export const BENGALI_PATH = "/collections/wedding-card-bengali";
-const IMAGE =
-  "https://res.cloudinary.com/dhbevwau9/image/upload/v1794916798/Bengali_Wedding_Cards_Showcase_wm8wi7.png";
 const DESCRIPTION =
   "Shop Bengali wedding invitation cards online in Kolkata. Explore traditional and modern designs, compare card prices, and enquire about printing and customisation.";
 
@@ -34,9 +33,12 @@ function pageDetails(params: WeddingSearchParams, resolvedPage?: number) {
 export function getBengaliMetadata(
   params: WeddingSearchParams,
   resolvedPage?: number,
+  products: WeddingProductPage["products"] = [],
 ): Metadata {
   const { page, path, index } = pageDetails(params, resolvedPage);
   const title = `Bengali Wedding Cards Online in Kolkata${page > 1 ? ` – Page ${page}` : ""} | ${SITE_NAME}`;
+  const previews = getProductPreviewImages(products);
+  const images = previews.length ? previews : [{ url: siteUrl(DEFAULT_OG_IMAGE), alt: `${SITE_NAME} logo` }];
   return {
     metadataBase: new URL(getSiteUrl()),
     title: { absolute: title },
@@ -50,18 +52,13 @@ export function getBengaliMetadata(
       siteName: SITE_NAME,
       type: "website",
       locale: "en_IN",
-      images: [
-        {
-          url: IMAGE,
-          alt: "Bengali wedding invitation card designs from Beyond Invitation",
-        },
-      ],
+      images,
     },
     twitter: {
       card: "summary_large_image",
       title,
       description: DESCRIPTION,
-      images: [IMAGE],
+      images,
     },
     robots: {
       index,

@@ -166,6 +166,17 @@ test("discovery includes public gallery images and escapes embedded product text
   assert.equal(JSON.parse(json).name, `${product.name} (${product.printName})`);
 });
 
+test("products without photos do not advertise logos, placeholders or empty product images", async () => {
+  const product = { ...publishedProduct, images: [] };
+  const h = harness(async () => product);
+  const metadata = await h.route.generateMetadata(props(product.slug));
+  const schema = structuredData(await h.route.default(props(product.slug))).find(item => item["@type"] === "Product");
+  assert.equal(Object.hasOwn(schema, "image"), false);
+  assert.deepEqual(metadata.openGraph.images, []);
+  assert.deepEqual(metadata.twitter.images, []);
+  assert.equal(metadata.twitter.card, "summary");
+});
+
 test("homepage product discovery uses the same image path and visible name without fabricated stock claims", async () => {
   const h = harness(async () => null, { featuredProducts: [publishedProduct, { ...publishedProduct, slug: "quote-only", price: 0 }] });
   const page = await h.load("components/home/HomeProducts.tsx").default({ description: "Wedding invitations" });

@@ -14,7 +14,7 @@ import { formatProductName } from "@/lib/product-name";
 import { getProductQuantityRules } from "@/lib/product-quantity";
 import { BRAND } from "@/components/siteConfig";
 import { BRAND_NAME, getSiteUrl } from "@/lib/site-config";
-import { absoluteUrl } from "@/lib/seo";
+import { getPublicProductImageUrls } from "@/lib/seo-images";
 import { getBusinessIdentity } from "@/lib/business-schema";
 import { ProductGrid } from "@/components/ProductGrid";
 import ProductGallery from "@/components/ProductGallery";
@@ -93,11 +93,7 @@ function buildCollectionUrl(product: ProductLike) {
 }
 
 function getProductImages(product: ProductLike) {
-  return (product.images || [])
-    // The gallery excludes private ERP files, so discovery must exclude them too.
-    .filter((image) => !image.toLowerCase().includes("/private/files/"))
-    .map((image) => absoluteUrl(image))
-    .filter((image): image is string => Boolean(image));
+  return getPublicProductImageUrls(product.images);
 }
 
 function hasProductPrice(product: ProductLike) {
@@ -357,7 +353,7 @@ function buildProductJsonLd(product: ProductLike) {
     name: formatProductName(product.name, product.printName),
     url: productUrl,
     description,
-    image: images,
+    ...(images.length ? { image: images } : {}),
     sku: getSku(product),
     // mpn property removed
     brand: {

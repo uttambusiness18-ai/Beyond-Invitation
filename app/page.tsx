@@ -10,6 +10,8 @@ import { getSiteUrl, DEFAULT_OG_IMAGE, SITE_NAME } from "@/lib/site-config";
 import { getBusinessIdentity } from "@/lib/business-schema";
 import { SHAGUN_ENVELOPES_ENABLED } from "@/lib/storefront-availability";
 import { absoluteUrl } from "@/lib/seo";
+import { fetchErpProductPage } from "@/lib/catalog";
+import { getProductPreviewImages } from "@/lib/seo-images";
 
 import { CelebrationGrid, WhyUs, OurShowroom } from "@/components/Sections";
 
@@ -38,7 +40,7 @@ const description = SHAGUN_ENVELOPES_ENABLED
   ? "Shop premium wedding cards in Kolkata from Beyond Invitation. Explore Indian wedding invitation cards, designer wedding cards, shagun envelopes and wedding stationery with pan-India delivery."
   : "Shop premium wedding cards in Kolkata from Beyond Invitation. Explore Indian wedding invitation cards, designer wedding cards and wedding stationery with pan-India delivery.";
 
-export const metadata: Metadata = {
+const baseMetadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title,
   description,
@@ -73,9 +75,9 @@ export const metadata: Metadata = {
     images: [
       {
         url: absoluteUrl(DEFAULT_OG_IMAGE) || "/logo.png",
-        width: 1200,
-        height: 630,
-        alt: `${SITE_NAME} wedding cards and invitation stationery`,
+        width: 2400,
+        height: 2400,
+        alt: `${SITE_NAME} logo`,
       },
     ],
   },
@@ -97,6 +99,24 @@ export const metadata: Metadata = {
     },
   },
 };
+
+export async function generateMetadata(): Promise<Metadata> {
+  try {
+    // This is the same collection displayed by HomeProducts, using its cached read.
+    const page = await fetchErpProductPage(0, true);
+    const images = getProductPreviewImages(page.products);
+    if (images.length) {
+      return {
+        ...baseMetadata,
+        openGraph: { ...baseMetadata.openGraph, images },
+        twitter: { ...baseMetadata.twitter, images },
+      };
+    }
+  } catch {
+    // A temporary catalogue outage can still show the real brand logo.
+  }
+  return baseMetadata;
+}
 
 export default async function HomePage() {
   const categories = await getAllCategories();

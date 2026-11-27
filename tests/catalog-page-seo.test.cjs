@@ -13,12 +13,12 @@ const routeCases = [
   { file: "app/collections/wedding-card/page.tsx", pathname: "/collections/wedding-card", scope: { subjects: SUBJECTS } },
 ];
 
-function harness({ total = 60, failure, failOffset } = {}) {
+function harness({ total = 60, failure, failOffset, photoStart = 0 } = {}) {
   const modules = new Map();
   const requests = [];
   const products = Array.from({ length: total }, (_, index) => ({
     slug: `wedding-card-${index + 1}`, name: `Wedding Card ${index + 1}`,
-    description: "Printed wedding invitation", images: [`/products/card-${index + 1}.jpg`], price: 50,
+    description: "Printed wedding invitation", images: index < photoStart ? [] : [`/products/card-${index + 1}.jpg`], price: 50,
   }));
   const mocks = {
     "server-only": {},
@@ -95,7 +95,10 @@ for (const scenario of routeCases) {
     assert.equal(second.props.initialPage.products.length, 24);
     assert.equal(metadata.alternates.canonical, `${scenario.pathname}?page=2`);
     assert.match(metadata.title, /Page 2/);
-    if (metadata.openGraph) assert.equal(metadata.openGraph.url, `${ORIGIN}${scenario.pathname}?page=2`);
+    assert.equal(metadata.openGraph.url, `${ORIGIN}${scenario.pathname}?page=2`);
+    assert.equal(metadata.openGraph.images[0].url, `${ORIGIN}/products/card-25.jpg`, "preview uses a product actually rendered on this page");
+    assert.equal(metadata.openGraph.images[0].width, undefined, "do not invent product photo dimensions");
+    assert.equal(metadata.twitter.images[0].url, metadata.openGraph.images[0].url);
     const collectionSchema = secondElements.find(node => node.props?.data?.["@type"] === "CollectionPage")?.props.data;
     if (scenario.file !== "app/collections/wedding-card/page.tsx") {
       assert.ok(collectionSchema, "rendered collection has structured data");
@@ -165,4 +168,19 @@ test("catalogue cache keeps independent collection scopes separate", async () =>
   await loadCatalogPage({ page: "2" }, { category: "birthday" });
   await loadCatalogPage({ page: "2" }, { category: "wedding" });
   assert.deepEqual(env.requests, [{ category: "wedding", offset: 24 }, { category: "birthday", offset: 24 }]);
+});
+
+test("collection previews skip products without photos and never label the logo as a product image", async () => {
+  for (const scenario of routeCases) {
+    const env = harness({ photoStart: 1 });
+    const route = env.load(scenario.file);
+    const metadata = await route.generateMetadata(props());
+    assert.equal(metadata.openGraph.images[0].url, `${ORIGIN}/products/card-2.jpg`);
+    const schema = descendants(await route.default(props())).find(node => node.props?.data?.["@type"] === "CollectionPage")?.props.data;
+    if (scenario.pathname === "/collections/wedding") {
+      const items = schema.mainEntity.itemListElement;
+      assert.equal(items[0].item.image, undefined, "no photo must not turn into a logo or another design");
+      assert.equal(items[1].item.image, `${ORIGIN}/products/card-2.jpg`);
+    }
+  }
 });

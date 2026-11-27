@@ -53,7 +53,7 @@ export async function generateMetadata({
 }: PageProps): Promise<Metadata> {
   const params = await searchParams;
   const initialPage = await loadPage(params);
-  return getBengaliMetadata(params, initialPage.pageNumber);
+  return getBengaliMetadata(params, initialPage.pageNumber, initialPage.products);
 }
 
 export default async function BengaliWeddingCardPage({

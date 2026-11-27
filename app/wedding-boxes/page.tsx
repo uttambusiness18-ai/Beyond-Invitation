@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
+import { cache } from "react";
 
 import JsonLd from "@/components/seo/JsonLd";
 import { fetchWeddingProductPage } from "@/lib/catalog-browse";
 import { COLLECTION_PAGE_SIZE } from "@/lib/catalog-browse-options";
 import { parsePageNumber } from "@/lib/pagination";
-import { facetCounts, weddingFiltersFromSearchParams, type BrowserProduct, type WeddingProductPage, type WeddingSearchParams } from "@/lib/wedding-cards";
+import { facetCounts, serializeWeddingFilters, weddingFiltersFromSearchParams, type WeddingFilters, type WeddingProductPage, type WeddingSearchParams } from "@/lib/wedding-cards";
+import { getProductPreviewImages, getPublicProductImageUrls } from "@/lib/seo-images";
+import { formatProductName } from "@/lib/product-name";
 import {
   DEFAULT_OG_IMAGE,
   SITE_NAME,
@@ -24,7 +27,7 @@ const title = "Wedding Boxes | Premium Invitation Boxes";
 const description =
   "Explore premium wedding boxes by Beyond Invitation — elegant invitation boxes crafted for luxury wedding gifting and presentation.";
 
-export const metadata: Metadata = {
+const baseMetadata: Metadata = {
   metadataBase: new URL(getSiteUrl()),
   title,
   description,
@@ -49,8 +52,6 @@ export const metadata: Metadata = {
     images: [
       {
         url: DEFAULT_OG_IMAGE,
-        width: 1200,
-        height: 630,
         alt: "Premium wedding boxes by Beyond Invitation",
       },
     ],
@@ -74,36 +75,48 @@ export const metadata: Metadata = {
   },
 };
 
-function getProductImage(product: BrowserProduct) {
-  const image = product.image;
-
-  if (!image) {
-    return siteUrl(DEFAULT_OG_IMAGE);
-  }
-
-  if (image.startsWith("http://") || image.startsWith("https://")) {
-    return image;
-  }
-
-  if (image.startsWith("/")) {
-    return siteUrl(image);
-  }
-
-  return siteUrl(`/products/${image}`);
-}
-
-export default async function WeddingBoxesPage({ searchParams }: { searchParams: Promise<WeddingSearchParams> }) {
-  const params = await searchParams;
-  const initialFilters = weddingFiltersFromSearchParams(params, "boxes");
-  const pageNumber = parsePageNumber(params.page, COLLECTION_PAGE_SIZE);
+const readPage = cache(async (price: WeddingFilters["price"], sort: WeddingFilters["sort"], requestedPage: number) => {
   let initialPage: WeddingProductPage = { products: [], nextOffset: null, total: 0, facets: facetCounts([]) };
   let errorMessage = "";
   try {
-    initialPage = await fetchWeddingProductPage({ collectionType: "boxes", filters: initialFilters, offset: (pageNumber - 1) * COLLECTION_PAGE_SIZE });
+    initialPage = await fetchWeddingProductPage({ collectionType: "boxes", filters: { type: "all", price, sort }, offset: (requestedPage - 1) * COLLECTION_PAGE_SIZE });
   } catch (error) {
     console.error("Wedding boxes page fetch failed:", error);
     errorMessage = "Unable to load wedding boxes.";
   }
+  return { initialPage, errorMessage };
+});
+
+async function loadPage(params: WeddingSearchParams) {
+  const initialFilters = weddingFiltersFromSearchParams(params, "boxes");
+  const requestedPage = parsePageNumber(params.page, COLLECTION_PAGE_SIZE);
+  const result = await readPage(initialFilters.price, initialFilters.sort, requestedPage);
+  const pageNumber = result.initialPage.pageNumber ?? requestedPage;
+  const filters = serializeWeddingFilters(initialFilters, "boxes");
+  const query = new URLSearchParams(filters);
+  if (pageNumber > 1) query.set("page", String(pageNumber));
+  return { ...result, initialFilters, pageNumber, canonical: `${PAGE_PATH}${query.size ? `?${query}` : ""}`, index: !filters && !result.errorMessage };
+}
+
+type PageProps = { searchParams: Promise<WeddingSearchParams> };
+
+export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
+  const { initialPage, canonical, pageNumber, index } = await loadPage(await searchParams);
+  const previews = getProductPreviewImages(initialPage.products);
+  const images = previews.length ? previews : [{ url: siteUrl(DEFAULT_OG_IMAGE), alt: "Premium wedding boxes by Beyond Invitation" }];
+  const pageTitle = `${title}${pageNumber > 1 ? ` – Page ${pageNumber}` : ""}`;
+  return {
+    ...baseMetadata,
+    title: pageTitle,
+    alternates: { canonical },
+    openGraph: { ...baseMetadata.openGraph, title: pageTitle, url: siteUrl(canonical), images },
+    twitter: { ...baseMetadata.twitter, title: pageTitle, images },
+    robots: { index, follow: true, googleBot: { index, follow: true, "max-image-preview": "large", "max-snippet": -1, "max-video-preview": -1 } },
+  };
+}
+
+export default async function WeddingBoxesPage({ searchParams }: PageProps) {
+  const { initialPage, initialFilters, pageNumber, errorMessage, canonical } = await loadPage(await searchParams);
 
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",
@@ -119,7 +132,7 @@ export default async function WeddingBoxesPage({ searchParams }: { searchParams:
         "@type": "ListItem",
         position: 2,
         name: "Wedding Boxes",
-        item: PAGE_URL,
+        item: siteUrl(canonical),
       },
     ],
   };
@@ -134,16 +147,15 @@ export default async function WeddingBoxesPage({ searchParams }: { searchParams:
       url: siteUrl(`/products/${product.slug}`),
       item: {
         "@type": "Product",
-        name: product.name,
+        name: formatProductName(product.name, product.printName),
         description,
-        image: getProductImage(product),
+        image: getPublicProductImageUrls([product.image])[0],
         url: siteUrl(`/products/${product.slug}`),
         category: ITEM_CATEGORY,
-        offers: product.price > 0 ? {
+        offers: Number.isFinite(product.price) && product.price > 0 ? {
           "@type": "Offer",
           priceCurrency: "INR",
           price: product.price,
-          availability: "https://schema.org/InStock",
         } : undefined,
       },
     })),

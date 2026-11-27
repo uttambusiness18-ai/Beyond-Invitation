@@ -48,7 +48,7 @@ function harness({ enabled = true, catalogueError, products, blogs = [] } = {}) 
       if (catalogueError) throw catalogueError;
       const pageNumber = Math.min(options.offset / 24 + 1, 3);
       return {
-        pageNumber, products: [{ slug: `${options.collectionType}-page-${pageNumber}` }],
+        pageNumber, products: [{ slug: `${options.collectionType}-page-${pageNumber}`, name: "Invitation", image: `/products/${options.collectionType}-page-${pageNumber}.jpg` }],
         total: 60, nextOffset: pageNumber < 3 ? pageNumber * 24 : null,
         facets: { total: 60, types: [], prices: [] },
       };
@@ -233,6 +233,8 @@ for (const type of ["hindu", "muslim", "christian"]) {
       assert.equal(load.requests[0].collectionType, type);
       assert.match(metadata.title, new RegExp(type, "i"));
       assert.ok(metadata.description.length > 50);
+      assert.equal(metadata.openGraph.images[0].url, `${ORIGIN}/products/${type}-page-${scenario.page}.jpg`);
+      assert.equal(metadata.twitter.images[0].url, metadata.openGraph.images[0].url);
     }
   });
 

@@ -1,6 +1,7 @@
 import {
   BRAND_NAME,
   BUSINESS_NAME,
+  BUSINESS_IMAGE,
   BUSINESS_ADDRESS,
   CONTACT,
   DEFAULT_OG_IMAGE,
@@ -18,8 +19,8 @@ export function getBusinessIdentity() {
     alternateName: [SITE_NAME, "Bharat Agency", BRAND_NAME],
     legalName: BRAND_NAME,
     url: getSiteUrl(),
-    image: siteUrl(DEFAULT_OG_IMAGE),
-    logo: { "@type": "ImageObject", url: siteUrl(DEFAULT_OG_IMAGE) },
+    image: siteUrl(BUSINESS_IMAGE),
+    logo: { "@type": "ImageObject", url: siteUrl(DEFAULT_OG_IMAGE), width: 2400, height: 2400 },
     telephone: CONTACT.displayPhone.replace(/\s/g, ""),
     email: CONTACT.email,
     address: { "@type": "PostalAddress", ...BUSINESS_ADDRESS },

@@ -23,6 +23,7 @@ export const SITE_NAME = "Beyond Invitation";
 export const BUSINESS_NAME = "Beyond Invitation (Bharat Agency)";
 export const BRAND_NAME = "Bharat Agency Wedding Cards Pvt. Ltd.";
 export const DEFAULT_OG_IMAGE = "/logo.png";
+export const BUSINESS_IMAGE = "/visit-us/bharat-agency-storefront.jpg";
 
 export const CONTACT = {
   whatsappNumber: "917044815488",

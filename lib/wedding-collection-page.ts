@@ -5,6 +5,8 @@ import { cache } from "react";
 import { fetchWeddingProductPage } from "@/lib/catalog-browse";
 import { COLLECTION_PAGE_SIZE } from "@/lib/catalog-browse-options";
 import { parsePageNumber } from "@/lib/pagination";
+import { getProductPreviewImages } from "@/lib/seo-images";
+import { DEFAULT_OG_IMAGE, SITE_NAME, siteUrl } from "@/lib/site-config";
 import {
   serializeWeddingFilters,
   weddingDefaultFilters,
@@ -42,11 +44,16 @@ export async function loadWeddingCollectionPage(
   if (pageNumber > 1) query.set("page", String(pageNumber));
   const index = initialFilters.price === "any" &&
     initialFilters.sort === weddingDefaultFilters(collectionType).sort;
-  const metadata: Pick<Metadata, "alternates" | "robots"> = {
+  const canonical = `/collections/wedding-card-${collectionType}${query.size ? `?${query}` : ""}`;
+  const productImages = getProductPreviewImages(initialPage.products);
+  const images = productImages.length ? productImages : [{ url: siteUrl(DEFAULT_OG_IMAGE), alt: SITE_NAME }];
+  const metadata: Pick<Metadata, "alternates" | "robots" | "openGraph" | "twitter"> = {
     alternates: {
-      canonical: `/collections/wedding-card-${collectionType}${query.size ? `?${query}` : ""}`,
+      canonical,
     },
     robots: { index, follow: true, googleBot: { index, follow: true } },
+    openGraph: { type: "website", url: siteUrl(canonical), images },
+    twitter: { card: "summary_large_image", images },
   };
   return { initialFilters, initialPage, metadata };
 }

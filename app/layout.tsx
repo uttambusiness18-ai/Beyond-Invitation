@@ -66,9 +66,9 @@ export const metadata: Metadata = {
     images: [
       {
         url: `${siteUrl}${DEFAULT_OG_IMAGE}`,
-        width: 1200,
-        height: 630,
-        alt: SITE_NAME,
+        width: 2400,
+        height: 2400,
+        alt: `${SITE_NAME} logo`,
       },
     ],
   },
@@ -78,6 +78,7 @@ export const metadata: Metadata = {
     title: SITE_NAME,
 
     description,
+    images: [`${siteUrl}${DEFAULT_OG_IMAGE}`],
   },
 
   robots: {

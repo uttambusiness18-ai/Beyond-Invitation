@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 
 import FilterableProductGrid from "@/components/FilterableProductGrid";
 import { loadCatalogPage, catalogPagePath, type CatalogSearchParams } from "@/lib/catalog-page";
+import { getProductPreviewImages } from "@/lib/seo-images";
+import { DEFAULT_OG_IMAGE, SITE_NAME, siteUrl } from "@/lib/site-config";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -22,11 +24,17 @@ const baseMetadata: Metadata = {
 type PageProps = { searchParams: Promise<CatalogSearchParams> };
 
 export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
-  const { pageNumber } = await loadCatalogPage(await searchParams ?? {}, { subjects: SUBJECTS });
+  const { page, pageNumber } = await loadCatalogPage(await searchParams ?? {}, { subjects: SUBJECTS });
+  const title = `Wedding Cards${pageNumber > 1 ? ` – Page ${pageNumber}` : ""}`;
+  const canonical = catalogPagePath("/collections/wedding-card", pageNumber);
+  const productImages = getProductPreviewImages(page.products);
+  const images = productImages.length ? productImages : [{ url: siteUrl(DEFAULT_OG_IMAGE), alt: SITE_NAME }];
   return {
     ...baseMetadata,
-    title: `Wedding Cards${pageNumber > 1 ? ` – Page ${pageNumber}` : ""}`,
-    alternates: { canonical: catalogPagePath("/collections/wedding-card", pageNumber) },
+    title,
+    alternates: { canonical },
+    openGraph: { title, description: baseMetadata.description ?? undefined, url: siteUrl(canonical), type: "website", images },
+    twitter: { card: "summary_large_image", title, description: baseMetadata.description ?? undefined, images },
   };
 }
 

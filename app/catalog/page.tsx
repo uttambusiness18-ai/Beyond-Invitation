@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { loadCatalogPage, catalogPagePath, type CatalogSearchParams } from "@/lib/catalog-page";
-import { getSiteUrl, siteUrl } from "@/lib/site-config";
+import { DEFAULT_OG_IMAGE, SITE_NAME, getSiteUrl, siteUrl } from "@/lib/site-config";
+import { getProductPreviewImages } from "@/lib/seo-images";
 import { COLLECTION_PAGE_SIZE } from "@/lib/catalog-browse-options";
 import { formatProductName } from "@/lib/product-name";
 import PaginatedProductGrid from "@/components/PaginatedProductGrid";
@@ -13,13 +14,16 @@ type PageProps = { searchParams: Promise<CatalogSearchParams> };
 const description = "Explore invitation cards, wedding boxes and celebration stationery from Beyond Invitation.";
 
 export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
-  const { pageNumber } = await loadCatalogPage(await searchParams);
+  const { page, pageNumber } = await loadCatalogPage(await searchParams);
   const title = `Product Catalogue${pageNumber > 1 ? ` – Page ${pageNumber}` : ""}`;
   const canonical = catalogPagePath("/catalog", pageNumber);
+  const productImages = getProductPreviewImages(page.products);
+  const images = productImages.length ? productImages : [{ url: siteUrl(DEFAULT_OG_IMAGE), alt: SITE_NAME }];
   return {
     title, description,
     alternates: { canonical },
-    openGraph: { title, description, url: siteUrl(canonical), type: "website" },
+    openGraph: { title, description, url: siteUrl(canonical), type: "website", images },
+    twitter: { card: "summary_large_image", title, description, images },
   };
 }
 

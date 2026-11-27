@@ -3,7 +3,7 @@ import { fetchItemCategoryProductPage } from "@/lib/catalog-item-category";
 import { catalogueErrorMessage } from "@/lib/catalog-errors";
 import { PRODUCTS_PER_PAGE } from "@/lib/product-page";
 import { getSiteUrl } from "@/lib/site-config";
-import { absoluteUrl } from "@/lib/seo";
+import { getPublicProductImageUrls } from "@/lib/seo-images";
 import { formatProductName } from "@/lib/product-name";
 import { ProductSection } from "@/components/ProductGrid";
 import { FeatureStrip, SaleCollection } from "@/components/Sections";
@@ -123,7 +123,7 @@ export default async function HomeProducts({ description }: { description: strin
         "@type": "Product",
         name: formatProductName(product.name, product.printName),
         description: product.description || description,
-        image: absoluteUrl(product.images?.[0]),
+        image: getPublicProductImageUrls(product.images)[0],
         url: `${siteUrl}/products/${product.slug}`,
         offers: Number.isFinite(product.price) && product.price > 0
           ? {

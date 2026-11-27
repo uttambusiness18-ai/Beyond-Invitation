@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 
 import CategoryCollectionPageClient from "@/components/CategoryCollectionPage";
 import JsonLd from "@/components/seo/JsonLd";
-import type { ErpProduct } from "@/lib/catalog";
+import { getProductPreviewImages, getPublicProductImageUrls } from "@/lib/seo-images";
 import { loadCatalogPage, catalogPagePath, type CatalogSearchParams } from "@/lib/catalog-page";
 import { COLLECTION_PAGE_SIZE } from "@/lib/catalog-browse-options";
 import { getAllCategories, getCategoryBySlug } from "@/lib/products";
@@ -76,24 +76,6 @@ function getCategorySeo(
   };
 }
 
-function getProductImage(product: ErpProduct) {
-  const image = product.images?.[0];
-
-  if (!image) {
-    return siteUrl(DEFAULT_OG_IMAGE);
-  }
-
-  if (image.startsWith("http://") || image.startsWith("https://")) {
-    return image;
-  }
-
-  if (image.startsWith("/")) {
-    return siteUrl(image);
-  }
-
-  return siteUrl(`/products/${image}`);
-}
-
 export async function generateMetadata({
   params,
   searchParams,
@@ -111,9 +93,11 @@ export async function generateMetadata({
     category.description,
   );
 
-  const { pageNumber } = await loadCatalogPage(await searchParams ?? {}, { category: category.slug });
+  const { page, pageNumber } = await loadCatalogPage(await searchParams ?? {}, { category: category.slug });
   const canonicalPath = catalogPagePath(`/collections/${category.slug}`, pageNumber);
   const title = `${seo.title}${pageNumber > 1 ? ` – Page ${pageNumber}` : ""}`;
+  const productImages = getProductPreviewImages(page.products);
+  const images = productImages.length ? productImages : [{ url: siteUrl(DEFAULT_OG_IMAGE), alt: SITE_NAME }];
 
   return {
     metadataBase: new URL(getSiteUrl()),
@@ -130,20 +114,13 @@ export async function generateMetadata({
       siteName: SITE_NAME,
       type: "website",
       locale: "en_IN",
-      images: [
-        {
-          url: DEFAULT_OG_IMAGE,
-          width: 1200,
-          height: 630,
-          alt: `${category.name} invitation cards by Beyond Invitation`,
-        },
-      ],
+      images,
     },
     twitter: {
       card: "summary_large_image",
       title,
       description: seo.description,
-      images: [DEFAULT_OG_IMAGE],
+      images,
     },
     robots: {
       index: true,
@@ -220,7 +197,7 @@ export default async function CollectionPage({ params, searchParams }: PageProps
           "@type": "Product",
           name: product.name,
           description: product.description || seo.description,
-          image: getProductImage(product),
+          image: getPublicProductImageUrls(product.images)[0],
           url: siteUrl(`/products/${product.slug}`),
           category: category.name,
           offers: product.price > 0 ? {
